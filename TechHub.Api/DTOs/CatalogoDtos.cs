@@ -64,8 +64,14 @@ public class ProductoQuery : PaginacionQuery
     public bool? SoloStockBajo { get; set; }
     /// <summary>Si es true, incluye productos dados de baja (solo personal).</summary>
     public bool IncluirInactivos { get; set; }
-    /// <summary>nombre | precio | precio_desc | stock</summary>
+    /// <summary>nombre | precio | precio_desc | stock | vendidos | nuevos</summary>
     public string? Orden { get; set; }
+
+    [Range(typeof(decimal), "0", "999999999")]
+    public decimal? PrecioMin { get; set; }
+
+    [Range(typeof(decimal), "0", "999999999")]
+    public decimal? PrecioMax { get; set; }
 }
 
 // ---------------- Proveedores ----------------

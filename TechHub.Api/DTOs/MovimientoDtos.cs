@@ -122,3 +122,9 @@ public record ResumenDto(
     decimal FacturacionMes,
     int Clientes,
     int Proveedores);
+
+/// <summary>Ventas de un día (hora de Argentina) para el gráfico del panel.</summary>
+public record VentaDiaDto(DateTime Fecha, string Etiqueta, decimal Total, int Pedidos);
+
+/// <summary>Ranking de productos por unidades vendidas.</summary>
+public record TopProductoDto(int ProductoId, string Producto, string? ImagenUrl, int Unidades, decimal Total);

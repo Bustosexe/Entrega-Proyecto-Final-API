@@ -116,6 +116,7 @@ public class ProductoDto
     public Color StockColor => Stock <= 0 ? Paleta.Peligro : StockBajo ? Paleta.Alerta : Paleta.Exito;
 
     [JsonIgnore] public string EstadoTexto => Activo ? "" : "INACTIVO";
+    [JsonIgnore] public bool PuedeAgregar => Activo && Stock > 0;
 
     public override string ToString() => $"{Nombre} (stock {Stock})"; // texto del Picker de compras
 }
@@ -212,4 +213,28 @@ public class ResumenDto
     public decimal FacturacionMes { get; set; }
     public int Clientes { get; set; }
     public int Proveedores { get; set; }
+}
+
+public class VentaDiaDto
+{
+    public DateTime Fecha { get; set; }
+    public string Etiqueta { get; set; } = string.Empty;
+    public decimal Total { get; set; }
+    public int Pedidos { get; set; }
+}
+
+public class TopProductoDto
+{
+    public int ProductoId { get; set; }
+    public string Producto { get; set; } = string.Empty;
+    public string? ImagenUrl { get; set; }
+    public int Unidades { get; set; }
+    public decimal Total { get; set; }
+
+    /// <summary>Proporción respecto del más vendido (0 a 1), para la barra de progreso.</summary>
+    [JsonIgnore] public double Proporcion { get; set; }
+    [JsonIgnore] public int Puesto { get; set; }
+    [JsonIgnore] public string PuestoTexto => $"#{Puesto}";
+    [JsonIgnore] public string ImagenCompleta => ApiConfig.UrlCompleta(ImagenUrl);
+    [JsonIgnore] public string Detalle => $"{Unidades} {(Unidades == 1 ? "unidad" : "unidades")} · {Formato.Moneda(Total)}";
 }

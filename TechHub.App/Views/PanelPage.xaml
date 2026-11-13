@@ -58,6 +58,47 @@
 
                 <Label Text="{Binding ClientesProveedores}" Style="{StaticResource Secundario}" HorizontalTextAlignment="Center" />
 
+                <!-- Gráfico: facturación de los últimos 7 días -->
+                <Border Style="{StaticResource Tarjeta}">
+                    <VerticalStackLayout Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout>
+                                <Label Text="Ventas de los últimos 7 días" Style="{StaticResource Subtitulo}" />
+                                <Label Text="{Binding PedidosSemana}" Style="{StaticResource Secundario}" FontSize="12" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="{Binding TotalSemana}" Style="{StaticResource KpiValor}" FontSize="17"
+                                   VerticalOptions="Center" />
+                        </Grid>
+                        <GraphicsView x:Name="GraficoVentasView" Drawable="{Binding GraficoVentas}" HeightRequest="190" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Ranking: productos más vendidos -->
+                <Border Style="{StaticResource Tarjeta}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Productos más vendidos" Style="{StaticResource Subtitulo}" />
+                        <Label Text="Todavía no hay ventas registradas." Style="{StaticResource Secundario}"
+                               IsVisible="{Binding SinVentasTop}" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding TopProductos}" Spacing="10">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="m:TopProductoDto">
+                                    <Grid ColumnDefinitions="28,40,*" ColumnSpacing="8" RowDefinitions="Auto,Auto,Auto">
+                                        <Label Grid.RowSpan="3" Text="{Binding PuestoTexto}" FontAttributes="Bold"
+                                               TextColor="{StaticResource Primario}" VerticalOptions="Center" />
+                                        <Image Grid.Column="1" Grid.RowSpan="3" Source="{Binding ImagenCompleta}"
+                                               WidthRequest="40" HeightRequest="40" Aspect="AspectFit" VerticalOptions="Center" />
+                                        <Label Grid.Column="2" Text="{Binding Producto}" FontAttributes="Bold" FontSize="13"
+                                               LineBreakMode="TailTruncation" />
+                                        <Label Grid.Column="2" Grid.Row="1" Text="{Binding Detalle}" Style="{StaticResource Secundario}" FontSize="12" />
+                                        <ProgressBar Grid.Column="2" Grid.Row="2" Progress="{Binding Proporcion}"
+                                                     ProgressColor="{StaticResource Primario}" Margin="0,2,0,0" />
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
                 <!-- Alerta de stock bajo -->
                 <Border Style="{StaticResource Tarjeta}">
                     <VerticalStackLayout Spacing="10">

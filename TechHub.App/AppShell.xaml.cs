@@ -8,9 +8,15 @@ public partial class AppShell : Shell
     public const string RutaTienda = "//tienda/catalogo";
     public const string RutaAdmin = "//admin/panel";
 
-    public AppShell(SesionService sesion)
+    public AppShell(SesionService sesion, CarritoService carrito)
     {
         InitializeComponent();
+
+        // La pestaña del carrito muestra cuántas unidades hay: "Carrito (3)".
+        void ActualizarCarrito() =>
+            TabCarrito.Title = carrito.Unidades > 0 ? $"Carrito ({carrito.Unidades})" : "Carrito";
+        carrito.Cambio += (_, _) => MainThread.BeginInvokeOnMainThread(ActualizarCarrito);
+        ActualizarCarrito();
 
         // Pantallas que se abren encima de las pestañas
         Routing.RegisterRoute("producto", typeof(ProductoDetallePage));

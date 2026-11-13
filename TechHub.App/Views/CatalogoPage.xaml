@@ -35,11 +35,13 @@
             </HorizontalStackLayout>
         </ScrollView>
 
-        <!-- Cantidad de resultados y orden -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Padding="16,2,12,0">
+        <!-- Resultados, filtro de precio y orden -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Padding="16,4,12,0">
             <Label Text="{Binding ResultadoTexto}" Style="{StaticResource Secundario}" VerticalOptions="Center" />
-            <Picker Grid.Column="1" ItemsSource="{Binding Ordenes}" SelectedItem="{Binding Orden}"
-                    WidthRequest="140" FontSize="13" Title="Ordenar" />
+            <Button Grid.Column="1" Text="{Binding PrecioTexto}" Command="{Binding ElegirPrecioCommand}"
+                    Style="{StaticResource BotonSecundario}" HeightRequest="34" FontSize="12" Padding="10,0" CornerRadius="17" />
+            <Picker Grid.Column="2" ItemsSource="{Binding Ordenes}" SelectedItem="{Binding Orden}"
+                    WidthRequest="125" FontSize="13" Title="Ordenar" />
         </Grid>
 
         <!-- Grilla de productos con scroll infinito (paginación de la API) -->
@@ -53,6 +55,34 @@
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout Orientation="Vertical" Span="2" VerticalItemSpacing="10" HorizontalItemSpacing="10" />
                 </CollectionView.ItemsLayout>
+
+                <!-- Destacados: los más vendidos (solo sin filtros) -->
+                <CollectionView.Header>
+                    <VerticalStackLayout IsVisible="{Binding MostrarDestacados}" Spacing="8" Padding="2,6,2,10">
+                        <Label Text="Los más vendidos" Style="{StaticResource Subtitulo}" />
+                        <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                            <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Destacados}" Spacing="10">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate x:DataType="m:ProductoDto">
+                                        <Border Style="{StaticResource Tarjeta}" Padding="10" WidthRequest="150">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnDestacadoTocado" />
+                                            </Border.GestureRecognizers>
+                                            <VerticalStackLayout Spacing="4">
+                                                <Image Source="{Binding ImagenCompleta}" HeightRequest="80" Aspect="AspectFit" />
+                                                <Label Text="{Binding Nombre}" FontSize="12" FontAttributes="Bold" MaxLines="2"
+                                                       LineBreakMode="TailTruncation" HeightRequest="34" />
+                                                <Label Text="{Binding PrecioTexto}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Primario}" />
+                                            </VerticalStackLayout>
+                                        </Border>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </HorizontalStackLayout>
+                        </ScrollView>
+                        <Label Text="Todos los productos" Style="{StaticResource Subtitulo}" Margin="0,6,0,0" />
+                    </VerticalStackLayout>
+                </CollectionView.Header>
+
                 <CollectionView.EmptyView>
                     <VerticalStackLayout Padding="30,60" Spacing="10">
                         <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
@@ -72,8 +102,16 @@
                                            LineBreakMode="TailTruncation" />
                                     <Label Text="{Binding Nombre}" FontAttributes="Bold" FontSize="14" MaxLines="2"
                                            LineBreakMode="TailTruncation" HeightRequest="40" />
-                                    <Label Text="{Binding PrecioTexto}" Style="{StaticResource Precio}" />
-                                    <Label Text="{Binding StockTexto}" TextColor="{Binding StockColor}" FontSize="12" FontAttributes="Bold" />
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+                                        <VerticalStackLayout VerticalOptions="Center">
+                                            <Label Text="{Binding PrecioTexto}" Style="{StaticResource Precio}" FontSize="15" />
+                                            <Label Text="{Binding StockTexto}" TextColor="{Binding StockColor}" FontSize="11" FontAttributes="Bold" />
+                                        </VerticalStackLayout>
+                                        <!-- Agregar rápido al carrito -->
+                                        <Button Grid.Column="1" Text="+" FontSize="22" Padding="0" WidthRequest="40" HeightRequest="40"
+                                                CornerRadius="20" VerticalOptions="Center" IsEnabled="{Binding PuedeAgregar}"
+                                                Clicked="OnAgregarRapido" />
+                                    </Grid>
                                 </VerticalStackLayout>
                             </VerticalStackLayout>
                         </Border>

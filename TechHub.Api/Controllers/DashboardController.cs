@@ -40,4 +40,59 @@ public class DashboardController(AppDbContext db) : ControllerBase
 
         return Ok(resumen);
     }
+
+    /// <summary>Facturación y cantidad de pedidos por día (hora de Argentina), sin pedidos cancelados.</summary>
+    [HttpGet("ventas-diarias")]
+    public async Task<ActionResult<List<VentaDiaDto>>> VentasDiarias([FromQuery] int dias = 7, CancellationToken ct = default)
+    {
+        dias = Math.Clamp(dias, 1, 31);
+        var hoyAr = DateTime.UtcNow.AddHours(-3).Date;
+        var desdeAr = hoyAr.AddDays(-(dias - 1));
+        var desdeUtc = desdeAr.AddHours(3);
+
+        var filas = await db.Salidas.AsNoTracking()
+            .Where(s => s.Estado != EstadosPedido.Cancelado && s.Fecha >= desdeUtc)
+            .Select(s => new { s.Fecha, s.Total, s.CodigoPedido })
+            .ToListAsync(ct);
+
+        var porDia = filas
+            .GroupBy(f => f.Fecha.AddHours(-3).Date)
+            .ToDictionary(g => g.Key, g => (Total: g.Sum(x => x.Total), Pedidos: g.Select(x => x.CodigoPedido).Distinct().Count()));
+
+        var cultura = new System.Globalization.CultureInfo("es-AR");
+        var resultado = Enumerable.Range(0, dias)
+            .Select(i => desdeAr.AddDays(i))
+            .Select(d => porDia.TryGetValue(d, out var v)
+                ? new VentaDiaDto(d, d.ToString("ddd dd", cultura), v.Total, v.Pedidos)
+                : new VentaDiaDto(d, d.ToString("ddd dd", cultura), 0, 0))
+            .ToList();
+
+        return Ok(resultado);
+    }
+
+    /// <summary>Ranking de productos más vendidos (unidades), sin pedidos cancelados.</summary>
+    [HttpGet("top-productos")]
+    public async Task<ActionResult<List<TopProductoDto>>> TopProductos([FromQuery] int cantidad = 5, CancellationToken ct = default)
+    {
+        cantidad = Math.Clamp(cantidad, 1, 20);
+
+        var ranking = await db.Salidas.AsNoTracking()
+            .Where(s => s.Estado != EstadosPedido.Cancelado)
+            .GroupBy(s => s.ProductoId)
+            .Select(g => new { ProductoId = g.Key, Unidades = g.Sum(s => s.Cantidad), Total = g.Sum(s => s.Total) })
+            .OrderByDescending(x => x.Unidades)
+            .Take(cantidad)
+            .ToListAsync(ct);
+
+        var ids = ranking.Select(r => r.ProductoId).ToList();
+        var productos = await db.Productos.AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .Select(p => new { p.Id, p.Nombre, p.ImagenUrl })
+            .ToDictionaryAsync(p => p.Id, ct);
+
+        return Ok(ranking
+            .Where(r => productos.ContainsKey(r.ProductoId))
+            .Select(r => new TopProductoDto(r.ProductoId, productos[r.ProductoId].Nombre, productos[r.ProductoId].ImagenUrl, r.Unidades, r.Total))
+            .ToList());
+    }
 }

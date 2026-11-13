@@ -11,7 +11,7 @@
         <Tab Title="Catálogo" Icon="ic_catalogo.png" Route="catalogo">
             <ShellContent ContentTemplate="{DataTemplate views:CatalogoPage}" />
         </Tab>
-        <Tab Title="Carrito" Icon="ic_carrito.png" Route="carrito">
+        <Tab x:Name="TabCarrito" Title="Carrito" Icon="ic_carrito.png" Route="carrito">
             <ShellContent ContentTemplate="{DataTemplate views:CarritoPage}" />
         </Tab>
         <Tab Title="Mis pedidos" Icon="ic_pedidos.png" Route="mispedidos">

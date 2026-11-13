@@ -329,7 +329,7 @@ public partial class AbmFormViewModel(ApiClient api) : BaseViewModel, IQueryAttr
 
         if (ok)
         {
-            await Dialogos.Alerta("Guardado", "Los datos se guardaron correctamente.");
+            Dialogos.Aviso("Datos guardados.");
             await IrAsync("..");
         }
     }

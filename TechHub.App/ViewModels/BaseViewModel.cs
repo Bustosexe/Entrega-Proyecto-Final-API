@@ -14,6 +14,25 @@ public static class Dialogos
     public static Task<bool> Confirmar(string titulo, string mensaje, string aceptar = "Sí", string cancelar = "No") =>
         PaginaActual?.DisplayAlert(titulo, mensaje, aceptar, cancelar) ?? Task.FromResult(false);
 
+    /// <summary>Aviso breve que no interrumpe (Toast nativo de Android).</summary>
+    public static void Aviso(string mensaje)
+    {
+#if ANDROID
+        MainThread.BeginInvokeOnMainThread(() =>
+            Android.Widget.Toast.MakeText(Microsoft.Maui.ApplicationModel.Platform.AppContext, mensaje, Android.Widget.ToastLength.Short)?.Show());
+#else
+        _ = Alerta("TechHub", mensaje);
+#endif
+    }
+
+    /// <summary>Menú de opciones (hoja de acciones). Devuelve la opción elegida o null.</summary>
+    public static async Task<string?> Opciones(string titulo, params string[] opciones)
+    {
+        if (PaginaActual is not { } pagina) return null;
+        var r = await pagina.DisplayActionSheet(titulo, "Cancelar", null, opciones);
+        return r is null || r == "Cancelar" ? null : r;
+    }
+
     public static Task Error(Exception ex) =>
         Alerta("Atención", ex is ApiException ? ex.Message : $"Ocurrió un error inesperado: {ex.Message}");
 }

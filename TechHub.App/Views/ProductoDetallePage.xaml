@@ -2,9 +2,14 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             xmlns:m="clr-namespace:TechHub.App.Models"
              x:Class="TechHub.App.Views.ProductoDetallePage"
              x:DataType="vm:ProductoDetalleViewModel"
              Title="{Binding Titulo}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Carrito" IconImageSource="ic_carrito_blanco.png" Command="{Binding IrAlCarritoCommand}" />
+    </ContentPage.ToolbarItems>
 
     <Grid RowDefinitions="*,Auto">
         <ScrollView>
@@ -24,6 +29,30 @@
 
                     <Label Text="Descripción" Style="{StaticResource Subtitulo}" Margin="0,12,0,0" />
                     <Label Text="{Binding Producto.Descripcion, TargetNullValue='Sin descripción.'}" Style="{StaticResource Secundario}" FontSize="14" />
+                </VerticalStackLayout>
+
+                <!-- También te puede interesar -->
+                <VerticalStackLayout IsVisible="{Binding TieneRelacionados}" Spacing="8" Padding="18,0,18,18">
+                    <Label Text="También te puede interesar" Style="{StaticResource Subtitulo}" />
+                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                        <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Relacionados}" Spacing="10">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="m:ProductoDto">
+                                    <Border Style="{StaticResource Tarjeta}" Padding="10" WidthRequest="145">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnRelacionadoTocado" />
+                                        </Border.GestureRecognizers>
+                                        <VerticalStackLayout Spacing="4">
+                                            <Image Source="{Binding ImagenCompleta}" HeightRequest="75" Aspect="AspectFit" />
+                                            <Label Text="{Binding Nombre}" FontSize="12" FontAttributes="Bold" MaxLines="2"
+                                                   LineBreakMode="TailTruncation" HeightRequest="34" />
+                                            <Label Text="{Binding PrecioTexto}" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Primario}" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </HorizontalStackLayout>
+                    </ScrollView>
                 </VerticalStackLayout>
             </VerticalStackLayout>
         </ScrollView>

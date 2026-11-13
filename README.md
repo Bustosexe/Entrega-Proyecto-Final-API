@@ -20,6 +20,13 @@ TechHub.App  (app Android, .NET MAUI)  ──HTTP + JWT──►  TechHub.Api  (
 | **Comprador** | Sí (se registra desde la app) | Lo mismo que el visitante, más confirmar compras, ver *Mis pedidos*, cancelar un pedido pendiente y editar su perfil. |
 | **Administrador** | Sí | Panel con indicadores, gestión de pedidos (confirmar, entregar, cancelar), productos con foto, compras a proveedores (suman stock), categorías, proveedores, clientes y usuarios. |
 
+### Funciones destacadas de la app
+
+- **Compra ágil:** botón **+** en cada tarjeta del catálogo, contador de unidades en la pestaña *Carrito (n)* y avisos breves (toast) en lugar de ventanas emergentes.
+- **Catálogo:** carrusel de **más vendidos**, filtro por categoría y por **rango de precio**, orden por nombre, precio, más vendidos o novedades, y sección **"También te puede interesar"** en el detalle.
+- **Seguimiento de pedidos:** **línea de tiempo** Pendiente → Confirmado → Entregado y botón **"Volver a comprar"**, que carga el carrito con el stock y los precios actuales.
+- **Panel del admin:** **gráfico de barras** con la facturación de los últimos 7 días (dibujado con Microsoft.Maui.Graphics) y **ranking de productos más vendidos**.
+
 ### Ciclo de un pedido
 
 ```
@@ -132,13 +139,14 @@ Decisiones de diseño:
 
 | Recurso | Visitante | Comprador | Admin |
 |---|---|---|---|
-| GET productos / categorías | ✅ | ✅ | ✅ (más inactivos) |
+| GET productos (filtros: `buscar`, `categoriaId`, `precioMin`, `precioMax`, `orden=nombre\|precio\|precio_desc\|vendidos\|nuevos`), `/api/productos/{id}/relacionados`, categorías | ✅ | ✅ | ✅ (más inactivos) |
 | POST `/api/auth/registro`, `/api/auth/login` | ✅ | — | — |
 | GET/PUT `/api/auth/perfil` | — | ✅ | ✅ |
 | POST `/api/pedidos` | — | ✅ (queda Pendiente) | ✅ (venta en local, requiere `clienteId`) |
 | GET `/api/pedidos/mios`, POST `/{codigo}/cancelar` | — | ✅ | — |
 | GET `/api/pedidos`, PUT `/{codigo}/estado` | — | — | ✅ |
-| Productos (ABM e imagen), categorías, proveedores, clientes, ingresos, usuarios, dashboard | — | — | ✅ |
+| Productos (ABM e imagen), categorías, proveedores, clientes, ingresos, usuarios | — | — | ✅ |
+| Dashboard: `/resumen`, `/ventas-diarias?dias=7`, `/top-productos?cantidad=5` | — | — | ✅ |
 
 ## 7. Paginación
 

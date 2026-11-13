@@ -25,6 +25,18 @@ public partial class CatalogoPage : ContentPage
         await _vm.AbrirProductoAsync(producto);
     }
 
+    private async void OnDestacadoTocado(object? sender, TappedEventArgs e)
+    {
+        if (sender is BindableObject { BindingContext: ProductoDto producto })
+            await _vm.AbrirProductoAsync(producto);
+    }
+
+    private void OnAgregarRapido(object? sender, EventArgs e)
+    {
+        if (sender is BindableObject { BindingContext: ProductoDto producto })
+            _vm.AgregarRapido(producto);
+    }
+
     private async void OnCategoriaTocada(object? sender, TappedEventArgs e)
     {
         if (sender is BindableObject { BindingContext: CategoriaFiltro categoria })

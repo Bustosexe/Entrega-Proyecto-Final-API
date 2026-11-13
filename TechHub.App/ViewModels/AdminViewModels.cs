@@ -9,6 +9,13 @@ namespace TechHub.App.ViewModels;
 public partial class PanelViewModel(ApiClient api, SesionService sesion) : BaseViewModel
 {
     public ObservableCollection<ProductoDto> StockBajo { get; } = [];
+    public ObservableCollection<TopProductoDto> TopProductos { get; } = [];
+
+    /// <summary>Gráfico de facturación de los últimos 7 días (se reemplaza en cada carga para redibujar).</summary>
+    [ObservableProperty] private Graficos.GraficoBarras? graficoVentas;
+    [ObservableProperty] private string totalSemana = "-";
+    [ObservableProperty] private string pedidosSemana = string.Empty;
+    [ObservableProperty] private bool sinVentasTop;
 
     [ObservableProperty] private string saludo = string.Empty;
     [ObservableProperty] private string facturacionHoy = "-";
@@ -46,6 +53,25 @@ public partial class PanelViewModel(ApiClient api, SesionService sesion) : BaseV
         StockBajo.Clear();
         foreach (var p in bajos.Items) StockBajo.Add(p);
         SinStockBajo = StockBajo.Count == 0;
+
+        // Ventas de los últimos 7 días
+        var dias = await api.GetAsync<List<VentaDiaDto>>("api/dashboard/ventas-diarias?dias=7");
+        GraficoVentas = new Graficos.GraficoBarras(dias.Select(d => (d.Etiqueta, (double)d.Total)).ToList());
+        TotalSemana = Formato.Moneda(dias.Sum(d => d.Total));
+        var pedidos = dias.Sum(d => d.Pedidos);
+        PedidosSemana = pedidos == 1 ? "1 pedido en 7 días" : $"{pedidos} pedidos en 7 días";
+
+        // Ranking de productos más vendidos
+        var top = await api.GetAsync<List<TopProductoDto>>("api/dashboard/top-productos?cantidad=5");
+        var maximo = Math.Max(1, top.Count == 0 ? 1 : top.Max(t => t.Unidades));
+        TopProductos.Clear();
+        for (var i = 0; i < top.Count; i++)
+        {
+            top[i].Puesto = i + 1;
+            top[i].Proporcion = top[i].Unidades / (double)maximo;
+            TopProductos.Add(top[i]);
+        }
+        SinVentasTop = TopProductos.Count == 0;
     });
 
     [RelayCommand]
@@ -319,8 +345,8 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
         if (_fotoPendiente is not null)
             await SubirFotoAsync(guardado.Id, _fotoPendiente);
 
-        await Dialogos.Alerta("Guardado", EsEdicion
-            ? "Los cambios se guardaron."
+        Dialogos.Aviso(EsEdicion
+            ? "Cambios guardados."
             : "Producto creado. Registrá una compra para cargarle stock.");
         await IrAsync("..");
     }
@@ -475,7 +501,7 @@ public partial class IngresoFormViewModel(ApiClient api) : BaseViewModel
 
         if (ok && ingreso is not null)
         {
-            await Dialogos.Alerta("Stock actualizado", $"+{ingreso.Cantidad} unidades de {ingreso.Producto}.");
+            Dialogos.Aviso($"Stock actualizado: +{ingreso.Cantidad} de {ingreso.Producto}");
             await IrAsync("..");
         }
     }

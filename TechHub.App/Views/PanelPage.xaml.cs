@@ -10,6 +10,13 @@ public partial class PanelPage : ContentPage
     {
         InitializeComponent();
         BindingContext = _vm = vm;
+
+        // Cuando llegan datos nuevos, se redibuja el gráfico.
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PanelViewModel.GraficoVentas))
+                GraficoVentasView.Invalidate();
+        };
     }
 
     protected override async void OnAppearing()

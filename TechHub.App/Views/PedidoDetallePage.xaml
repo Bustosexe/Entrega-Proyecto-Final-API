@@ -22,7 +22,43 @@
                         </Border>
                     </Grid>
                     <Label Text="{Binding Pedido.FechaTexto}" Style="{StaticResource Secundario}" />
-                    <Label Text="{Binding EstadoAyuda}" FontSize="14" />
+
+                    <!-- Línea de tiempo del pedido -->
+                    <Grid IsVisible="{Binding MostrarLineaDeTiempo}" ColumnDefinitions="Auto,*,Auto,*,Auto"
+                          RowDefinitions="Auto,Auto" Margin="4,14,4,4" RowSpacing="6">
+                        <Border Grid.Column="0" WidthRequest="26" HeightRequest="26" StrokeThickness="0"
+                                StrokeShape="RoundRectangle 13" BackgroundColor="{Binding Paso1Color}">
+                            <Label Text="1" TextColor="White" FontAttributes="Bold" FontSize="12"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <BoxView Grid.Column="1" HeightRequest="4" Color="{Binding Linea1Color}" VerticalOptions="Center" />
+                        <Border Grid.Column="2" WidthRequest="26" HeightRequest="26" StrokeThickness="0"
+                                StrokeShape="RoundRectangle 13" BackgroundColor="{Binding Paso2Color}">
+                            <Label Text="2" TextColor="White" FontAttributes="Bold" FontSize="12"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <BoxView Grid.Column="3" HeightRequest="4" Color="{Binding Linea2Color}" VerticalOptions="Center" />
+                        <Border Grid.Column="4" WidthRequest="26" HeightRequest="26" StrokeThickness="0"
+                                StrokeShape="RoundRectangle 13" BackgroundColor="{Binding Paso3Color}">
+                            <Label Text="3" TextColor="White" FontAttributes="Bold" FontSize="12"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <Grid Grid.Row="1" Grid.ColumnSpan="5" ColumnDefinitions="*,*,*" Margin="-4,0">
+                            <Label Text="Pendiente" FontSize="11" Style="{StaticResource Secundario}" />
+                            <Label Grid.Column="1" Text="Confirmado" FontSize="11" Style="{StaticResource Secundario}"
+                                   HorizontalTextAlignment="Center" />
+                            <Label Grid.Column="2" Text="Entregado" FontSize="11" Style="{StaticResource Secundario}"
+                                   HorizontalTextAlignment="End" />
+                        </Grid>
+                    </Grid>
+
+                    <!-- Pedido cancelado -->
+                    <Border IsVisible="{Binding EsCancelado}" BackgroundColor="#FEE2E2" StrokeThickness="0"
+                            StrokeShape="RoundRectangle 10" Padding="12,8" Margin="0,8,0,0">
+                        <Label Text="Este pedido fue cancelado." TextColor="{StaticResource Peligro}" FontAttributes="Bold" />
+                    </Border>
+
+                    <Label Text="{Binding EstadoAyuda}" FontSize="14" Margin="0,6,0,0" />
                 </VerticalStackLayout>
             </Border>
 
@@ -78,6 +114,7 @@
                     Style="{StaticResource BotonPeligro}" />
             <Button Text="Cancelar mi pedido" Command="{Binding CancelarCommand}" IsVisible="{Binding PuedeCancelarComprador}"
                     Style="{StaticResource BotonPeligro}" />
+            <Button Text="Volver a comprar" Command="{Binding VolverAComprarCommand}" IsVisible="{Binding PuedeVolverAComprar}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

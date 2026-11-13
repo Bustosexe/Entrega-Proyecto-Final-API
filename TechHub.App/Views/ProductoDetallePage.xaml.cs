@@ -17,4 +17,10 @@ public partial class ProductoDetallePage : ContentPage
         base.OnAppearing();
         await _vm.AlAparecerAsync();
     }
+
+    private async void OnRelacionadoTocado(object? sender, TappedEventArgs e)
+    {
+        if (sender is BindableObject { BindingContext: ProductoDto producto })
+            await _vm.AbrirRelacionadoAsync(producto);
+    }
 }

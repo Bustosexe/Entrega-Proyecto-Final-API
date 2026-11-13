@@ -41,11 +41,19 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
         if (q.SoloStockBajo == true)
             query = query.Where(p => p.Stock <= p.StockMinimo);
 
+        if (q.PrecioMin is decimal min) query = query.Where(p => p.Precio >= min);
+        if (q.PrecioMax is decimal max) query = query.Where(p => p.Precio <= max);
+
         query = q.Orden?.ToLowerInvariant() switch
         {
             "precio" => query.OrderBy(p => p.Precio).ThenBy(p => p.Id),
             "precio_desc" => query.OrderByDescending(p => p.Precio).ThenBy(p => p.Id),
             "stock" => query.OrderBy(p => p.Stock).ThenBy(p => p.Id),
+            "nuevos" => query.OrderByDescending(p => p.FechaCreacion).ThenByDescending(p => p.Id),
+            // Más vendidos: unidades vendidas en pedidos no cancelados (subconsulta en SQL).
+            "vendidos" => query
+                .OrderByDescending(p => p.Salidas.Where(s => s.Estado != EstadosPedido.Cancelado).Sum(s => (int?)s.Cantidad) ?? 0)
+                .ThenBy(p => p.Nombre),
             _ => query.OrderBy(p => p.Nombre).ThenBy(p => p.Id)
         };
 
@@ -62,6 +70,32 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
     {
         var dto = await ProyectarAsync(id, ct);
         return dto is null ? NotFound() : Ok(dto);
+    }
+
+    /// <summary>
+    /// Productos relacionados (misma categoría, activos), priorizando los que tienen stock y los más vendidos.
+    /// Se usa en el detalle del producto: "También te puede interesar".
+    /// </summary>
+    [HttpGet("{id:int}/relacionados")]
+    [AllowAnonymous]
+    public async Task<ActionResult<List<ProductoDto>>> Relacionados(int id, [FromQuery] int cantidad = 6, CancellationToken ct = default)
+    {
+        var categoriaId = await db.Productos.Where(p => p.Id == id).Select(p => (int?)p.CategoriaId).FirstOrDefaultAsync(ct);
+        if (categoriaId is null) return NotFound();
+
+        cantidad = Math.Clamp(cantidad, 1, 12);
+        var lista = await db.Productos.AsNoTracking()
+            .Where(p => p.Activo && p.CategoriaId == categoriaId && p.Id != id)
+            .OrderByDescending(p => p.Stock > 0)
+            .ThenByDescending(p => p.Salidas.Where(s => s.Estado != EstadosPedido.Cancelado).Sum(s => (int?)s.Cantidad) ?? 0)
+            .ThenBy(p => p.Nombre)
+            .Take(cantidad)
+            .Select(p => new ProductoDto(
+                p.Id, p.Nombre, p.Marca, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
+                p.Stock <= p.StockMinimo, p.ImagenUrl, p.Activo, p.CategoriaId, p.Categoria.Nombre))
+            .ToListAsync(ct);
+
+        return Ok(lista);
     }
 
     /// <summary>Crea un producto con stock 0. El stock solo aumenta registrando Ingresos (trazabilidad).</summary>
