@@ -1,0 +1,40 @@
+## .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.swp
+*.DotSettings.user
+
+## Publicación
+publish/
+PublishProfiles/
+*.pubxml
+*.pubxml.user
+*.publishsettings
+
+## Secretos (connection string de MonsterASP y clave JWT reales)
+appsettings.Production.json
+
+## Imágenes subidas por los usuarios (viven en el servidor)
+TechHub.Api/wwwroot/uploads/*
+!TechHub.Api/wwwroot/uploads/.gitkeep
+
+## Sistema
+Thumbs.db
+.DS_Store
+
+## Android / MAUI
+*.keystore
+*.jks
+*.apk
+*.aab

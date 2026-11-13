@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             xmlns:s="clr-namespace:TechHub.App.Services"
+             x:Class="TechHub.App.Views.CarritoPage"
+             x:DataType="vm:CarritoViewModel"
+             Title="Mi carrito">
+
+    <Grid RowDefinitions="*,Auto">
+
+        <CollectionView ItemsSource="{Binding Carrito.Items}" Margin="12,12,12,0">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="30,80" Spacing="14" HorizontalOptions="Center">
+                    <Image Source="ic_carrito.png" HeightRequest="56" Opacity="0.35" />
+                    <Label Text="Tu carrito está vacío" Style="{StaticResource Subtitulo}" HorizontalTextAlignment="Center" />
+                    <Label Text="Explorá el catálogo y agregá los componentes para tu PC." Style="{StaticResource Secundario}"
+                           HorizontalTextAlignment="Center" />
+                    <Button Text="Ver catálogo" Command="{Binding IrAlCatalogoCommand}" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="s:CarritoItem">
+                    <Border Style="{StaticResource Tarjeta}" Padding="10">
+                        <Grid ColumnDefinitions="70,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12">
+                            <Image Grid.RowSpan="3" Source="{Binding ImagenCompleta}" WidthRequest="70" HeightRequest="70" Aspect="AspectFit" />
+                            <Label Grid.Column="1" Text="{Binding Nombre}" FontAttributes="Bold" MaxLines="2" LineBreakMode="TailTruncation" />
+                            <Button Grid.Column="2" Text="✕" Style="{StaticResource BotonCircular}" WidthRequest="32" HeightRequest="32"
+                                    CornerRadius="16" FontSize="13" Clicked="OnQuitar" />
+                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding PrecioTexto}" Style="{StaticResource Secundario}" />
+                            <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Spacing="8" Margin="0,6,0,0">
+                                <Button Text="−" Style="{StaticResource BotonCircular}" WidthRequest="32" HeightRequest="32" CornerRadius="16" Clicked="OnRestar" />
+                                <Label Text="{Binding Cantidad}" FontAttributes="Bold" FontSize="16" VerticalOptions="Center"
+                                       WidthRequest="26" HorizontalTextAlignment="Center" />
+                                <Button Text="+" Style="{StaticResource BotonCircular}" WidthRequest="32" HeightRequest="32" CornerRadius="16" Clicked="OnSumar" />
+                            </HorizontalStackLayout>
+                            <Label Grid.Row="2" Grid.Column="2" Text="{Binding SubtotalTexto}" Style="{StaticResource Precio}"
+                                   FontSize="15" VerticalOptions="End" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Resumen y confirmación -->
+        <Border Grid.Row="1" IsVisible="{Binding TieneItems}" BackgroundColor="White" Stroke="{StaticResource Borde}" Padding="16,12">
+            <VerticalStackLayout Spacing="10">
+                <Border Style="{StaticResource CampoBorde}">
+                    <Entry Text="{Binding Observaciones}" Placeholder="Observaciones (opcional): envío, horario..." MaxLength="500" />
+                </Border>
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout>
+                        <Label Text="Total" Style="{StaticResource Secundario}" />
+                        <Label Text="{Binding UnidadesTexto}" Style="{StaticResource Secundario}" FontSize="12" />
+                    </VerticalStackLayout>
+                    <Label Grid.Column="1" Text="{Binding TotalTexto}" FontSize="24" FontAttributes="Bold"
+                           TextColor="{StaticResource Oscuro}" VerticalOptions="Center" />
+                </Grid>
+                <Button Text="Confirmar pedido" Command="{Binding ConfirmarCommand}" IsEnabled="{Binding NoEstaOcupado}" />
+                <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" HeightRequest="24" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

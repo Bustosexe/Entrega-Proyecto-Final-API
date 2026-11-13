@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Color x:Key="Primario">#0891B2</Color>
+    <Color x:Key="PrimarioOscuro">#0E7490</Color>
+    <Color x:Key="Acento">#22D3EE</Color>
+    <Color x:Key="Oscuro">#0F172A</Color>
+    <Color x:Key="Fondo">#F4F6FA</Color>
+    <Color x:Key="Superficie">#FFFFFF</Color>
+    <Color x:Key="Texto">#0F172A</Color>
+    <Color x:Key="TextoSecundario">#64748B</Color>
+    <Color x:Key="Borde">#E2E8F0</Color>
+    <Color x:Key="Exito">#16A34A</Color>
+    <Color x:Key="Alerta">#D97706</Color>
+    <Color x:Key="Peligro">#DC2626</Color>
+
+    <SolidColorBrush x:Key="PrimarioBrush" Color="#0891B2" />
+    <SolidColorBrush x:Key="SuperficieBrush" Color="#FFFFFF" />
+
+</ResourceDictionary>

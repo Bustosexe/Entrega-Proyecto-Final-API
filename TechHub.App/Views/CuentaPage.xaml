@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             x:Class="TechHub.App.Views.CuentaPage"
+             x:DataType="vm:CuentaViewModel"
+             Title="Mi cuenta">
+
+    <ScrollView>
+        <Grid Padding="20">
+
+            <!-- Visitante -->
+            <VerticalStackLayout IsVisible="{Binding EsVisitante}" Spacing="14" Padding="0,40,0,0">
+                <Image Source="logo.png" HeightRequest="80" />
+                <Label Text="Hola, visitante" Style="{StaticResource Titulo}" HorizontalTextAlignment="Center" />
+                <Label Text="Podés recorrer el catálogo sin cuenta. Para comprar, ingresá o creá tu cuenta gratis."
+                       Style="{StaticResource Secundario}" HorizontalTextAlignment="Center" />
+                <Button Text="Ingresar" Command="{Binding IrALoginCommand}" Margin="0,10,0,0" />
+                <Button Text="Crear cuenta" Command="{Binding IrARegistroCommand}" Style="{StaticResource BotonSecundario}" />
+                <Label Text="{Binding ServidorTexto}" Style="{StaticResource Secundario}" FontSize="11"
+                       HorizontalTextAlignment="Center" Margin="0,30,0,0" />
+            </VerticalStackLayout>
+
+            <!-- Comprador -->
+            <VerticalStackLayout IsVisible="{Binding EstaLogueado}" Spacing="6">
+                <Label Text="{Binding Nombre}" Style="{StaticResource Titulo}" />
+                <Label Text="{Binding Email}" Style="{StaticResource Secundario}" />
+                <Label Text="{Binding Documento, StringFormat='DNI/CUIT: {0}'}" Style="{StaticResource Secundario}" Margin="0,0,0,10" />
+
+                <Label Text="Nombre" Style="{StaticResource Rotulo}" />
+                <Border Style="{StaticResource CampoBorde}">
+                    <Entry Text="{Binding Nombre}" MaxLength="150" />
+                </Border>
+                <Label Text="Teléfono" Style="{StaticResource Rotulo}" />
+                <Border Style="{StaticResource CampoBorde}">
+                    <Entry Text="{Binding Telefono}" Keyboard="Telephone" MaxLength="30" />
+                </Border>
+                <Label Text="Dirección" Style="{StaticResource Rotulo}" />
+                <Border Style="{StaticResource CampoBorde}">
+                    <Entry Text="{Binding Direccion}" MaxLength="200" />
+                </Border>
+
+                <Label Text="Cambiar contraseña (opcional)" Style="{StaticResource Subtitulo}" Margin="0,16,0,0" />
+                <Label Text="Contraseña actual" Style="{StaticResource Rotulo}" />
+                <Border Style="{StaticResource CampoBorde}">
+                    <Entry Text="{Binding PasswordActual}" IsPassword="True" />
+                </Border>
+                <Label Text="Nueva contraseña" Style="{StaticResource Rotulo}" />
+                <Border Style="{StaticResource CampoBorde}">
+                    <Entry Text="{Binding NuevaPassword}" IsPassword="True" />
+                </Border>
+
+                <Button Text="Guardar cambios" Command="{Binding GuardarCommand}" IsEnabled="{Binding NoEstaOcupado}" Margin="0,16,0,0" />
+                <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
+                <Button Text="Cerrar sesión" Command="{Binding CerrarSesionCommand}" Style="{StaticResource BotonPeligro}" Margin="0,6,0,0" />
+            </VerticalStackLayout>
+        </Grid>
+    </ScrollView>
+</ContentPage>

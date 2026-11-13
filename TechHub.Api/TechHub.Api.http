@@ -1,0 +1,87 @@
+### Pruebas rápidas de la API (Visual Studio / VS Code REST Client)
+@host = http://localhost:5180
+
+### 1) Login de administrador -> copiar el "token" en @admin
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "usuario": "admin", "password": "Admin123!" }
+
+###
+@admin = PEGAR_TOKEN_ADMIN
+
+### 2) Catálogo público paginado (sin token)
+GET {{host}}/api/productos?pagina=1&tamanio=10&buscar=rtx&orden=precio
+
+### 3) Crear producto SIN token -> 401 Unauthorized
+POST {{host}}/api/productos
+Content-Type: application/json
+
+{ "nombre": "GeForce RTX 4070 12GB", "marca": "Nvidia", "precio": 850000, "stockMinimo": 2, "categoriaId": 2 }
+
+### 4) Crear producto como Admin -> 201 Created
+POST {{host}}/api/productos
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "nombre": "GeForce RTX 4070 12GB", "marca": "Nvidia", "precio": 850000, "stockMinimo": 2, "categoriaId": 2 }
+
+### 5) Proveedor
+POST {{host}}/api/proveedores
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "razonSocial": "Mayorista Hardware SA", "cuit": "30-71234567-8", "email": "ventas@mayorista.com" }
+
+### 6) Compra al proveedor (Ingreso): suma 5 unidades de stock
+POST {{host}}/api/ingresos
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "productoId": 1, "proveedorId": 1, "cantidad": 5, "costoUnitario": 700000, "numeroComprobante": "A-0001-00001234" }
+
+### 7) Registro de comprador (desde la app) -> devuelve token
+POST {{host}}/api/auth/registro
+Content-Type: application/json
+
+{ "nombre": "Juan Pérez", "documento": "30123456", "email": "juan@mail.com", "telefono": "1155556666", "password": "Juan123!" }
+
+###
+@comprador = PEGAR_TOKEN_COMPRADOR
+
+### 8) Comprador crea un pedido: reserva stock y queda Pendiente
+POST {{host}}/api/pedidos
+Authorization: Bearer {{comprador}}
+Content-Type: application/json
+
+{ "items": [ { "productoId": 1, "cantidad": 2 } ], "observaciones": "Retiro por el local" }
+
+### 9) Pedido con más unidades que el stock -> 409 Conflict (no se guarda nada)
+POST {{host}}/api/pedidos
+Authorization: Bearer {{comprador}}
+Content-Type: application/json
+
+{ "items": [ { "productoId": 1, "cantidad": 99 } ] }
+
+### 10) Comprador intenta ver el dashboard -> 403 Forbidden
+GET {{host}}/api/dashboard/resumen
+Authorization: Bearer {{comprador}}
+
+### 11) Mis pedidos (comprador)
+GET {{host}}/api/pedidos/mios?pagina=1&tamanio=10
+Authorization: Bearer {{comprador}}
+
+### 12) Admin: pedidos pendientes
+GET {{host}}/api/pedidos?estado=Pendiente
+Authorization: Bearer {{admin}}
+
+### 13) Admin confirma el pedido (reemplazar el código)
+PUT {{host}}/api/pedidos/P261113-ABC123/estado
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "estado": "Confirmado" }
+
+### 14) Dashboard
+GET {{host}}/api/dashboard/resumen
+Authorization: Bearer {{admin}}

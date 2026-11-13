@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             xmlns:m="clr-namespace:TechHub.App.Models"
+             x:Class="TechHub.App.Views.CatalogoPage"
+             x:DataType="vm:CatalogoViewModel"
+             Title="TechHub">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+        <!-- Encabezado con buscador -->
+        <VerticalStackLayout Grid.Row="0" BackgroundColor="{StaticResource Oscuro}" Padding="16,6,16,16" Spacing="10">
+            <Label Text="Componentes para tu próxima PC" TextColor="White" FontSize="19" FontAttributes="Bold" />
+            <Label Text="Stock actualizado en tiempo real" TextColor="#94A3B8" FontSize="13" Margin="0,-6,0,0" />
+            <Border StrokeShape="RoundRectangle 12" StrokeThickness="0" BackgroundColor="White" Padding="0">
+                <SearchBar Text="{Binding Buscar}" Placeholder="Buscar: RTX, Ryzen, DDR5..." />
+            </Border>
+        </VerticalStackLayout>
+
+        <!-- Filtro por categoría -->
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,10,0,0">
+            <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Categorias}" Spacing="8" Padding="12,0">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CategoriaFiltro">
+                        <Border Padding="14,8" StrokeShape="RoundRectangle 18" Stroke="{StaticResource Borde}"
+                                BackgroundColor="{Binding Fondo}" VerticalOptions="Center">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnCategoriaTocada" />
+                            </Border.GestureRecognizers>
+                            <Label Text="{Binding Nombre}" TextColor="{Binding ColorTexto}" FontSize="13" FontAttributes="Bold" />
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <!-- Cantidad de resultados y orden -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Padding="16,2,12,0">
+            <Label Text="{Binding ResultadoTexto}" Style="{StaticResource Secundario}" VerticalOptions="Center" />
+            <Picker Grid.Column="1" ItemsSource="{Binding Ordenes}" SelectedItem="{Binding Orden}"
+                    WidthRequest="140" FontSize="13" Title="Ordenar" />
+        </Grid>
+
+        <!-- Grilla de productos con scroll infinito (paginación de la API) -->
+        <RefreshView Grid.Row="3" IsRefreshing="{Binding EstaRefrescando}" Command="{Binding RecargarCommand}">
+            <CollectionView ItemsSource="{Binding Productos}"
+                            SelectionMode="Single"
+                            SelectionChanged="OnProductoSeleccionado"
+                            RemainingItemsThreshold="4"
+                            RemainingItemsThresholdReachedCommand="{Binding CargarMasCommand}"
+                            Margin="10,4,10,0">
+                <CollectionView.ItemsLayout>
+                    <GridItemsLayout Orientation="Vertical" Span="2" VerticalItemSpacing="10" HorizontalItemSpacing="10" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout Padding="30,60" Spacing="10">
+                        <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
+                        <Label Text="{Binding MensajeVacio}" HorizontalTextAlignment="Center" Style="{StaticResource Secundario}" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.Footer>
+                    <BoxView HeightRequest="12" Color="Transparent" />
+                </CollectionView.Footer>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="m:ProductoDto">
+                        <Border Style="{StaticResource Tarjeta}" Padding="0">
+                            <VerticalStackLayout>
+                                <Image Source="{Binding ImagenCompleta}" HeightRequest="120" Aspect="AspectFit" Margin="10,10,10,4" />
+                                <VerticalStackLayout Padding="10,0,10,12" Spacing="3">
+                                    <Label Text="{Binding MarcaCategoria}" Style="{StaticResource Secundario}" FontSize="11"
+                                           LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Nombre}" FontAttributes="Bold" FontSize="14" MaxLines="2"
+                                           LineBreakMode="TailTruncation" HeightRequest="40" />
+                                    <Label Text="{Binding PrecioTexto}" Style="{StaticResource Precio}" />
+                                    <Label Text="{Binding StockTexto}" TextColor="{Binding StockColor}" FontSize="12" FontAttributes="Bold" />
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

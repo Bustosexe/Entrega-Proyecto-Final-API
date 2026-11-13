@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell x:Class="TechHub.App.AppShell"
+       xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:TechHub.App.Views"
+       Shell.FlyoutBehavior="Disabled"
+       Title="TechHub">
+
+    <!-- Tienda: visitantes (sin cuenta) y compradores -->
+    <TabBar x:Name="TabsTienda" Route="tienda">
+        <Tab Title="Catálogo" Icon="ic_catalogo.png" Route="catalogo">
+            <ShellContent ContentTemplate="{DataTemplate views:CatalogoPage}" />
+        </Tab>
+        <Tab Title="Carrito" Icon="ic_carrito.png" Route="carrito">
+            <ShellContent ContentTemplate="{DataTemplate views:CarritoPage}" />
+        </Tab>
+        <Tab Title="Mis pedidos" Icon="ic_pedidos.png" Route="mispedidos">
+            <ShellContent ContentTemplate="{DataTemplate views:MisPedidosPage}" />
+        </Tab>
+        <Tab Title="Cuenta" Icon="ic_cuenta.png" Route="cuenta">
+            <ShellContent ContentTemplate="{DataTemplate views:CuentaPage}" />
+        </Tab>
+    </TabBar>
+
+    <!-- Administración: solo rol Admin -->
+    <TabBar x:Name="TabsAdmin" Route="admin">
+        <Tab Title="Panel" Icon="ic_panel.png" Route="panel">
+            <ShellContent ContentTemplate="{DataTemplate views:PanelPage}" />
+        </Tab>
+        <Tab Title="Pedidos" Icon="ic_pedidos.png" Route="pedidosadmin">
+            <ShellContent ContentTemplate="{DataTemplate views:PedidosAdminPage}" />
+        </Tab>
+        <Tab Title="Productos" Icon="ic_productos.png" Route="productosadmin">
+            <ShellContent ContentTemplate="{DataTemplate views:ProductosAdminPage}" />
+        </Tab>
+        <Tab Title="Compras" Icon="ic_compras.png" Route="compras">
+            <ShellContent ContentTemplate="{DataTemplate views:IngresosPage}" />
+        </Tab>
+        <Tab Title="Más" Icon="ic_mas.png" Route="mas">
+            <ShellContent ContentTemplate="{DataTemplate views:MasPage}" />
+        </Tab>
+    </TabBar>
+
+</Shell>

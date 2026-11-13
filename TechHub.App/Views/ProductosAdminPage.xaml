@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             xmlns:m="clr-namespace:TechHub.App.Models"
+             x:Class="TechHub.App.Views.ProductosAdminPage"
+             x:DataType="vm:ProductosAdminViewModel"
+             Title="Productos">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Nuevo" IconImageSource="ic_agregar.png" Command="{Binding NuevoCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,*">
+        <VerticalStackLayout Padding="12,10,12,0" Spacing="4">
+            <Border StrokeShape="RoundRectangle 12" Stroke="{StaticResource Borde}" BackgroundColor="White" Padding="0">
+                <SearchBar Text="{Binding Buscar}" Placeholder="Buscar por nombre o marca..." />
+            </Border>
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="4">
+                <Label Text="{Binding ResultadoTexto}" Style="{StaticResource Secundario}" VerticalOptions="Center" />
+                <Label Grid.Column="1" Text="Stock bajo" Style="{StaticResource Secundario}" VerticalOptions="Center" />
+                <Switch Grid.Column="2" IsToggled="{Binding SoloStockBajo}" />
+                <Label Grid.Column="3" Text="Inactivos" Style="{StaticResource Secundario}" VerticalOptions="Center" />
+                <Switch Grid.Column="4" IsToggled="{Binding IncluirInactivos}" />
+            </Grid>
+        </VerticalStackLayout>
+
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding EstaRefrescando}" Command="{Binding RecargarCommand}">
+            <CollectionView ItemsSource="{Binding Productos}" SelectionMode="Single" SelectionChanged="OnProductoSeleccionado"
+                            RemainingItemsThreshold="4" RemainingItemsThresholdReachedCommand="{Binding CargarMasCommand}"
+                            Margin="12,4,12,0">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="8" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout Padding="30,60" Spacing="10">
+                        <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
+                        <Label Text="Sin productos. Tocá + para crear uno." Style="{StaticResource Secundario}" HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="m:ProductoDto">
+                        <Border Style="{StaticResource Tarjeta}" Padding="10">
+                            <Grid ColumnDefinitions="56,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10">
+                                <Image Grid.RowSpan="3" Source="{Binding ImagenCompleta}" WidthRequest="56" HeightRequest="56" Aspect="AspectFit" />
+                                <Label Grid.Column="1" Text="{Binding Nombre}" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                                <Label Grid.Column="2" Text="{Binding EstadoTexto}" TextColor="{StaticResource Peligro}" FontSize="11" FontAttributes="Bold" />
+                                <Label Grid.Row="1" Grid.Column="1" Text="{Binding MarcaCategoria}" Style="{StaticResource Secundario}" FontSize="12" />
+                                <Label Grid.Row="2" Grid.Column="1" Text="{Binding PrecioTexto}" FontAttributes="Bold" />
+                                <Label Grid.Row="2" Grid.Column="2" Text="{Binding StockTexto}" TextColor="{Binding StockColor}" FontAttributes="Bold" FontSize="12" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

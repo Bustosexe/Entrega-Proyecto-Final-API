@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             x:Class="TechHub.App.Views.AbmFormPage"
+             x:DataType="vm:AbmFormViewModel"
+             Title="{Binding Titulo}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="18" Spacing="6">
+
+            <!-- Los campos se generan según el tipo de registro (categoría, proveedor, cliente o usuario) -->
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Campos}" Spacing="6">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AbmCampo">
+                        <VerticalStackLayout Spacing="4">
+                            <!-- Campo de texto -->
+                            <VerticalStackLayout IsVisible="{Binding EsTexto}" Spacing="4">
+                                <Label Text="{Binding Rotulo}" Style="{StaticResource Rotulo}" />
+                                <Border Style="{StaticResource CampoBorde}">
+                                    <Entry Text="{Binding Valor}" Keyboard="{Binding Teclado}" IsPassword="{Binding EsPassword}"
+                                           IsReadOnly="{Binding SoloLectura}" MaxLength="{Binding Maximo}" />
+                                </Border>
+                                <Label Text="{Binding Ayuda}" Style="{StaticResource Secundario}" FontSize="12"
+                                       IsVisible="{Binding TieneAyuda}" />
+                            </VerticalStackLayout>
+                            <!-- Interruptor (activo / inactivo) -->
+                            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding EsSwitch}" Margin="0,10,0,0">
+                                <Label Text="{Binding Etiqueta}" VerticalOptions="Center" FontAttributes="Bold" />
+                                <Switch Grid.Column="1" IsToggled="{Binding ValorBool}" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
+            <Button Text="Guardar" Command="{Binding GuardarCommand}" IsEnabled="{Binding NoEstaOcupado}" Margin="0,18,0,0" />
+            <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
+            <Button Text="{Binding TextoBorrar}" Command="{Binding BorrarCommand}" IsVisible="{Binding PuedeBorrar}"
+                    Style="{StaticResource BotonPeligro}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

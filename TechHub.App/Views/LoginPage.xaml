@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             x:Class="TechHub.App.Views.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             Title="Ingresar">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24,36" Spacing="14">
+            <Image Source="logo.png" HeightRequest="80" />
+            <Label Text="Bienvenido a TechHub" Style="{StaticResource Titulo}" HorizontalTextAlignment="Center" />
+            <Label Text="Ingresá para comprar y seguir tus pedidos" Style="{StaticResource Secundario}"
+                   HorizontalTextAlignment="Center" Margin="0,-8,0,10" />
+
+            <Label Text="Email o usuario" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <Entry Text="{Binding Usuario}" Keyboard="Email" Placeholder="tu@email.com" ReturnType="Next" />
+            </Border>
+
+            <Label Text="Contraseña" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <Entry Text="{Binding Password}" IsPassword="True" Placeholder="••••••" ReturnType="Go"
+                       ReturnCommand="{Binding IngresarCommand}" />
+            </Border>
+
+            <Button Text="Ingresar" Command="{Binding IngresarCommand}" IsEnabled="{Binding NoEstaOcupado}" Margin="0,12,0,0" />
+            <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
+
+            <BoxView HeightRequest="1" Color="{StaticResource Borde}" Margin="0,10" />
+            <Label Text="¿Todavía no tenés cuenta?" Style="{StaticResource Secundario}" HorizontalTextAlignment="Center" />
+            <Button Text="Crear cuenta" Style="{StaticResource BotonSecundario}" Command="{Binding IrARegistroCommand}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

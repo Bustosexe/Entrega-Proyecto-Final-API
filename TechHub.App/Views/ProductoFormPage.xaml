@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             x:Class="TechHub.App.Views.ProductoFormPage"
+             x:DataType="vm:ProductoFormViewModel"
+             Title="{Binding Titulo}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="18" Spacing="6">
+
+            <!-- Foto -->
+            <Border Style="{StaticResource Tarjeta}">
+                <VerticalStackLayout Spacing="10">
+                    <Image Source="{Binding Imagen}" HeightRequest="180" Aspect="AspectFit" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <Button Text="Elegir foto" Command="{Binding ElegirFotoCommand}" Style="{StaticResource BotonSecundario}" />
+                        <Button Grid.Column="1" Text="Quitar foto" Command="{Binding QuitarFotoCommand}"
+                                Style="{StaticResource BotonPeligro}" IsVisible="{Binding TieneImagen}" />
+                    </Grid>
+                    <Label Text="JPG, PNG o WEBP · máx. 5 MB. El servidor la guarda con un nombre único (GUID)."
+                           Style="{StaticResource Secundario}" FontSize="12" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="Nombre *" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <Entry Text="{Binding Nombre}" Placeholder="GeForce RTX 4070 12GB" MaxLength="150" />
+            </Border>
+
+            <Label Text="Marca *" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <Entry Text="{Binding Marca}" Placeholder="Nvidia" MaxLength="80" />
+            </Border>
+
+            <Label Text="Categoría *" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <Picker ItemsSource="{Binding Categorias}" SelectedItem="{Binding Categoria}" Title="Seleccionar categoría" />
+            </Border>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <VerticalStackLayout>
+                    <Label Text="Precio de venta ($) *" Style="{StaticResource Rotulo}" />
+                    <Border Style="{StaticResource CampoBorde}">
+                        <Entry Text="{Binding Precio}" Keyboard="Numeric" Placeholder="850000" />
+                    </Border>
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1">
+                    <Label Text="Stock mínimo *" Style="{StaticResource Rotulo}" />
+                    <Border Style="{StaticResource CampoBorde}">
+                        <Entry Text="{Binding StockMinimo}" Keyboard="Numeric" />
+                    </Border>
+                </VerticalStackLayout>
+            </Grid>
+            <Label Text="{Binding StockTexto}" Style="{StaticResource Secundario}" FontSize="12" />
+
+            <Label Text="Descripción" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <Editor Text="{Binding Descripcion}" HeightRequest="100" MaxLength="1000" Placeholder="Especificaciones, garantía..." />
+            </Border>
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                <Label Text="Activo (visible en el catálogo)" VerticalOptions="Center" />
+                <Switch Grid.Column="1" IsToggled="{Binding Activo}" />
+            </Grid>
+
+            <Button Text="Guardar" Command="{Binding GuardarCommand}" IsEnabled="{Binding NoEstaOcupado}" Margin="0,14,0,0" />
+            <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
+            <Button Text="Dar de baja" Command="{Binding DarDeBajaCommand}" IsVisible="{Binding EsEdicion}"
+                    Style="{StaticResource BotonPeligro}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

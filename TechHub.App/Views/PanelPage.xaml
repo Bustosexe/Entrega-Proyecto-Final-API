@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             xmlns:m="clr-namespace:TechHub.App.Models"
+             x:Class="TechHub.App.Views.PanelPage"
+             x:DataType="vm:PanelViewModel"
+             Title="Panel de control">
+
+    <RefreshView IsRefreshing="{Binding EstaRefrescando}" Command="{Binding CargarCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="14" Spacing="12">
+
+                <Label Text="{Binding Saludo}" Style="{StaticResource Titulo}" />
+
+                <!-- Pedidos pendientes (acción principal del admin) -->
+                <Border Style="{StaticResource Tarjeta}" BackgroundColor="{StaticResource Oscuro}" Stroke="{StaticResource Oscuro}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout>
+                            <Label Text="Pedidos pendientes" TextColor="#94A3B8" FontSize="13" />
+                            <Label Text="{Binding Pendientes}" TextColor="White" FontSize="30" FontAttributes="Bold" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1" Text="Ver pedidos" Command="{Binding VerPendientesCommand}" VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Indicadores -->
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
+                    <Border Style="{StaticResource Tarjeta}">
+                        <VerticalStackLayout>
+                            <Label Text="Facturación de hoy" Style="{StaticResource Secundario}" />
+                            <Label Text="{Binding FacturacionHoy}" Style="{StaticResource KpiValor}" />
+                            <Label Text="{Binding VentasHoy}" Style="{StaticResource Secundario}" FontSize="12" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Grid.Column="1" Style="{StaticResource Tarjeta}">
+                        <VerticalStackLayout>
+                            <Label Text="Facturación del mes" Style="{StaticResource Secundario}" />
+                            <Label Text="{Binding FacturacionMes}" Style="{StaticResource KpiValor}" />
+                            <Label Text="sin pedidos cancelados" Style="{StaticResource Secundario}" FontSize="12" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Grid.Row="1" Style="{StaticResource Tarjeta}">
+                        <VerticalStackLayout>
+                            <Label Text="Unidades en stock" Style="{StaticResource Secundario}" />
+                            <Label Text="{Binding Unidades}" Style="{StaticResource KpiValor}" />
+                            <Label Text="{Binding Productos}" Style="{StaticResource Secundario}" FontSize="12" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource Tarjeta}">
+                        <VerticalStackLayout>
+                            <Label Text="Valor del inventario" Style="{StaticResource Secundario}" />
+                            <Label Text="{Binding ValorInventario}" Style="{StaticResource KpiValor}" />
+                            <Label Text="a precio de venta" Style="{StaticResource Secundario}" FontSize="12" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+
+                <Label Text="{Binding ClientesProveedores}" Style="{StaticResource Secundario}" HorizontalTextAlignment="Center" />
+
+                <!-- Alerta de stock bajo -->
+                <Border Style="{StaticResource Tarjeta}">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label Text="Productos para reponer" Style="{StaticResource Subtitulo}" />
+                            <Border Grid.Column="1" Style="{StaticResource Etiqueta}" BackgroundColor="{StaticResource Alerta}">
+                                <Label Text="{Binding StockBajoCantidad}" Style="{StaticResource TextoEtiqueta}" />
+                            </Border>
+                        </Grid>
+                        <Label Text="Todo el stock está por encima del mínimo." Style="{StaticResource Secundario}"
+                               IsVisible="{Binding SinStockBajo}" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding StockBajo}" Spacing="8">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="m:ProductoDto">
+                                    <Grid ColumnDefinitions="44,*,Auto" ColumnSpacing="10">
+                                        <Grid.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnProductoTocado" />
+                                        </Grid.GestureRecognizers>
+                                        <Image Source="{Binding ImagenCompleta}" WidthRequest="44" HeightRequest="44" Aspect="AspectFit" />
+                                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                            <Label Text="{Binding Nombre}" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                                            <Label Text="{Binding StockMinimo, StringFormat='Mínimo: {0}'}" Style="{StaticResource Secundario}" FontSize="12" />
+                                        </VerticalStackLayout>
+                                        <Label Grid.Column="2" Text="{Binding StockTexto}" TextColor="{Binding StockColor}"
+                                               FontAttributes="Bold" FontSize="12" VerticalOptions="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>
