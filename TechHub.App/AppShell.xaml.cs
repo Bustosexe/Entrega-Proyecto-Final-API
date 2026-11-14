@@ -27,6 +27,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("ingresoform", typeof(IngresoFormPage));
         Routing.RegisterRoute("abmlista", typeof(AbmListaPage));
         Routing.RegisterRoute("abmform", typeof(AbmFormPage));
+        Routing.RegisterRoute("reportes", typeof(ReportesPage));
 
         // Si quedó una sesión de administrador abierta, la app arranca en el panel.
         CurrentItem = sesion.EsAdmin ? TabsAdmin : TabsTienda;

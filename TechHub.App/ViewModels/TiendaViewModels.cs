@@ -14,7 +14,7 @@ public partial class CategoriaFiltro : ObservableObject
     [NotifyPropertyChangedFor(nameof(ColorTexto))]
     private bool seleccionada;
 
-    public Color Fondo => Seleccionada ? Paleta.Primario : Paleta.Blanco;
+    public Color Fondo => Seleccionada ? Paleta.Primario : Paleta.FondoChip;
     public Color ColorTexto => Seleccionada ? Paleta.Blanco : Paleta.Oscuro;
 }
 
@@ -244,13 +244,13 @@ public partial class ProductoDetalleViewModel(ApiClient api, CarritoService carr
         if (Producto is null) return;
         if (!Producto.PuedeAgregar)
         {
-            await Dialogos.Alerta("Sin stock", "Este producto no tiene unidades disponibles por el momento.");
+            await Dialogos.Advertencia("Sin stock", "Este producto no tiene unidades disponibles por el momento.");
             return;
         }
         if (!carrito.Agregar(Producto, Cantidad))
         {
             var enCarrito = carrito.Items.FirstOrDefault(i => i.ProductoId == Producto.Id)?.Cantidad ?? 0;
-            await Dialogos.Alerta("Stock insuficiente",
+            await Dialogos.Advertencia("Stock insuficiente",
                 $"Hay {Producto.Stock} unidades disponibles y ya tenés {enCarrito} en el carrito.");
             return;
         }
@@ -278,6 +278,7 @@ public partial class CarritoViewModel : BaseViewModel
     public CarritoService Carrito { get; }
 
     [ObservableProperty] private string observaciones = string.Empty;
+    [ObservableProperty] private string pagoTexto = "Pagás por transferencia bancaria. Al confirmar te mostramos el alias.";
 
     public string TotalTexto => Formato.Moneda(Carrito.Total);
     public string UnidadesTexto => Carrito.Unidades == 1 ? "1 unidad" : $"{Carrito.Unidades} unidades";
@@ -289,6 +290,18 @@ public partial class CarritoViewModel : BaseViewModel
         _sesion = sesion;
         Carrito = carrito;
         Carrito.Cambio += (_, _) => ActualizarTotales();
+    }
+
+    /// <summary>Muestra el alias de la tienda en el resumen del carrito.</summary>
+    public async Task CargarDatosPagoAsync()
+    {
+        try
+        {
+            var d = await _api.GetAsync<DatosTransferenciaDto>("api/pagos/transferencia");
+            if (!string.IsNullOrWhiteSpace(d.Alias))
+                PagoTexto = $"Pagás por transferencia al alias {d.Alias}. Reservamos el stock {d.HorasReserva} h.";
+        }
+        catch { /* se deja el texto genérico */ }
     }
 
     public void ActualizarTotales()
@@ -312,7 +325,7 @@ public partial class CarritoViewModel : BaseViewModel
 
     public async Task QuitarAsync(CarritoItem item)
     {
-        if (await Dialogos.Confirmar("Quitar producto", $"¿Quitar {item.Nombre} del carrito?", "Quitar", "Cancelar"))
+        if (await Dialogos.Confirmar("Quitar producto", $"¿Quitar {item.Nombre} del carrito?", "Quitar", "Cancelar", peligro: true))
             Carrito.Quitar(item);
     }
 
@@ -334,12 +347,12 @@ public partial class CarritoViewModel : BaseViewModel
 
         if (_sesion.EsAdmin)
         {
-            await Dialogos.Alerta("Cuenta de administrador", "Las compras se hacen con una cuenta de comprador.");
+            await Dialogos.Advertencia("Cuenta de administrador", "Las compras se hacen con una cuenta de comprador.");
             return;
         }
 
         if (!await Dialogos.Confirmar("Confirmar pedido",
-                $"{UnidadesTexto} por un total de {TotalTexto}.\nEl stock queda reservado hasta que la tienda confirme el pedido.",
+                $"{UnidadesTexto} por un total de {TotalTexto}.\nEl stock queda reservado mientras hacés la transferencia.",
                 "Confirmar", "Revisar"))
             return;
 
@@ -358,9 +371,10 @@ public partial class CarritoViewModel : BaseViewModel
         {
             Carrito.Vaciar();
             Observaciones = string.Empty;
-            await Dialogos.Alerta("¡Pedido realizado!",
-                $"Tu pedido {pedido.Codigo} por {pedido.TotalTexto} quedó pendiente de confirmación.");
-            await IrAsync("//tienda/mispedidos");
+            await Dialogos.Exito("¡Pedido realizado!",
+                $"Tu pedido {pedido.Codigo} por {pedido.TotalTexto} quedó reservado. Ahora transferí y subí el comprobante.");
+            // Abre el pedido: ahí están el alias para transferir y el botón para subir el comprobante.
+            await IrAsync("pedido", new Dictionary<string, object> { ["Codigo"] = pedido.Codigo });
         }
     }
 }
@@ -387,7 +401,7 @@ public partial class LoginViewModel(ApiClient api, SesionService sesion) : BaseV
     {
         if (string.IsNullOrWhiteSpace(Usuario) || string.IsNullOrWhiteSpace(Password))
         {
-            await Dialogos.Alerta("Datos incompletos", "Ingresá tu email (o usuario) y tu contraseña.");
+            await Dialogos.Advertencia("Datos incompletos", "Ingresá tu email (o usuario) y tu contraseña.");
             return;
         }
 
@@ -434,12 +448,12 @@ public partial class RegistroViewModel(ApiClient api, SesionService sesion) : Ba
         if (string.IsNullOrWhiteSpace(Nombre) || string.IsNullOrWhiteSpace(Documento) ||
             string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
         {
-            await Dialogos.Alerta("Datos incompletos", "Completá nombre, DNI/CUIT, email y contraseña.");
+            await Dialogos.Advertencia("Datos incompletos", "Completá nombre, DNI/CUIT, email y contraseña.");
             return;
         }
         if (Password != Password2)
         {
-            await Dialogos.Alerta("Contraseña", "Las contraseñas no coinciden.");
+            await Dialogos.Advertencia("Contraseña", "Las contraseñas no coinciden.");
             return;
         }
 
@@ -460,7 +474,7 @@ public partial class RegistroViewModel(ApiClient api, SesionService sesion) : Ba
         if (ok && respuesta is not null)
         {
             await sesion.IniciarAsync(respuesta);
-            await Dialogos.Alerta("¡Bienvenido!", $"Tu cuenta fue creada, {respuesta.Usuario.NombreCompleto}.");
+            await Dialogos.Exito("¡Bienvenido!", $"Tu cuenta fue creada, {respuesta.Usuario.NombreCompleto}.", 2200);
             await AppShell.IrAInicioAsync(sesion, _volver);
         }
     }
@@ -526,16 +540,19 @@ public partial class MisPedidosViewModel(ApiClient api, SesionService sesion) : 
 
 public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion, CarritoService carrito) : BaseViewModel, IQueryAttributable
 {
-    private static readonly Color ColorPendiente = Color.FromArgb("#CBD5E1");
+    private static readonly Color ColorPendiente = Color.FromArgb("#E2E8F0");
 
     private string _codigo = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PuedeCancelarComprador))]
-    [NotifyPropertyChangedFor(nameof(PuedeConfirmar))]
+    [NotifyPropertyChangedFor(nameof(PuedeAprobarPago))]
     [NotifyPropertyChangedFor(nameof(PuedeEntregar))]
     [NotifyPropertyChangedFor(nameof(PuedeCancelarAdmin))]
     [NotifyPropertyChangedFor(nameof(PuedeVolverAComprar))]
+    [NotifyPropertyChangedFor(nameof(MostrarDatosPago))]
+    [NotifyPropertyChangedFor(nameof(PuedeVerComprobante))]
+    [NotifyPropertyChangedFor(nameof(TieneRechazo))]
     [NotifyPropertyChangedFor(nameof(EstadoAyuda))]
     [NotifyPropertyChangedFor(nameof(TieneObservaciones))]
     [NotifyPropertyChangedFor(nameof(EsCancelado))]
@@ -543,42 +560,59 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
     [NotifyPropertyChangedFor(nameof(Paso1Color))]
     [NotifyPropertyChangedFor(nameof(Paso2Color))]
     [NotifyPropertyChangedFor(nameof(Paso3Color))]
+    [NotifyPropertyChangedFor(nameof(Paso4Color))]
     [NotifyPropertyChangedFor(nameof(Linea1Color))]
     [NotifyPropertyChangedFor(nameof(Linea2Color))]
+    [NotifyPropertyChangedFor(nameof(Linea3Color))]
     private PedidoDto? pedido;
 
-    public bool EsAdmin => sesion.EsAdmin;
-    public bool PuedeCancelarComprador => !EsAdmin && Pedido?.Estado == "Pendiente";
-    public bool PuedeConfirmar => EsAdmin && Pedido?.Estado == "Pendiente";
-    public bool PuedeEntregar => EsAdmin && Pedido?.Estado is "Pendiente" or "Confirmado";
-    public bool PuedeCancelarAdmin => EsAdmin && Pedido?.Estado is "Pendiente" or "Confirmado";
-    public bool PuedeVolverAComprar => !EsAdmin && Pedido?.Estado is "Entregado" or "Cancelado";
-    public bool TieneObservaciones => !string.IsNullOrWhiteSpace(Pedido?.Observaciones);
+    [ObservableProperty] private DatosTransferenciaDto? datosPago;
 
-    // ----- Línea de tiempo: Pendiente → Confirmado → Entregado -----
-    public bool EsCancelado => Pedido?.Estado == "Cancelado";
+    public bool EsAdmin => sesion.EsAdmin;
+    public bool EsComprador => !sesion.EsAdmin;
+
+    private string Estado => Pedido?.Estado ?? string.Empty;
+    public bool PuedeCancelarComprador => EsComprador && Estado is "Pendiente" or "EnRevision";
+    public bool PuedeAprobarPago => EsAdmin && Estado == "EnRevision";
+    public bool PuedeEntregar => EsAdmin && Estado == "Confirmado";
+    public bool PuedeCancelarAdmin => EsAdmin && Estado is "Pendiente" or "EnRevision" or "Confirmado";
+    public bool PuedeVolverAComprar => EsComprador && Estado is "Entregado" or "Cancelado";
+    public bool MostrarDatosPago => EsComprador && Estado == "Pendiente";
+    public bool PuedeVerComprobante => Pedido?.TieneComprobante == true;
+    public bool TieneRechazo => Estado == "Pendiente" && !string.IsNullOrWhiteSpace(Pedido?.MotivoRechazo);
+    public bool TieneObservaciones => !string.IsNullOrWhiteSpace(Pedido?.Observaciones);
+    public string TotalTransferir => Pedido?.TotalTexto ?? string.Empty;
+
+    // ----- Línea de tiempo: Pedido → Pago enviado → Pago confirmado → Entregado -----
+    public bool EsCancelado => Estado == "Cancelado";
     public bool MostrarLineaDeTiempo => Pedido is not null && !EsCancelado;
 
-    private int Paso => Pedido?.Estado switch
+    private int Paso => Estado switch
     {
         "Pendiente" => 1,
-        "Confirmado" => 2,
-        "Entregado" => 3,
+        "EnRevision" => 2,
+        "Confirmado" => 3,
+        "Entregado" => 4,
         _ => 0
     };
 
-    private Color ColorPaso(int n) => Paso >= n ? (Paso == 3 ? Paleta.Exito : Paleta.Primario) : ColorPendiente;
+    private Color ColorPaso(int n) => Paso >= n ? (Paso == 4 ? Paleta.Exito : Paleta.Primario) : ColorPendiente;
     public Color Paso1Color => ColorPaso(1);
     public Color Paso2Color => ColorPaso(2);
     public Color Paso3Color => ColorPaso(3);
+    public Color Paso4Color => ColorPaso(4);
     public Color Linea1Color => ColorPaso(2);
     public Color Linea2Color => ColorPaso(3);
+    public Color Linea3Color => ColorPaso(4);
 
-    public string EstadoAyuda => Pedido?.Estado switch
+    public string EstadoAyuda => Estado switch
     {
         "Pendiente" => EsAdmin
-            ? "El stock está reservado. Confirmá el pedido cuando recibas el pago."
-            : "Tu pedido está reservado. La tienda se comunicará para coordinar el pago y la entrega.",
+            ? "Esperando la transferencia del cliente. El stock está reservado."
+            : "Transferí el total y subí el comprobante para que confirmemos tu compra.",
+        "EnRevision" => EsAdmin
+            ? $"El cliente subió el comprobante ({Pedido?.ComprobanteFechaTexto}). Verificá que el dinero haya ingresado."
+            : $"Recibimos tu comprobante ({Pedido?.ComprobanteFechaTexto}). Lo estamos verificando.",
         "Confirmado" => "Pago confirmado. Listo para retirar o enviar.",
         "Entregado" => "Pedido entregado. ¡Gracias por tu compra!",
         "Cancelado" => "Pedido cancelado. Las unidades volvieron al stock.",
@@ -594,7 +628,17 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
         }
     }
 
-    public Task AlAparecerAsync() => CargarAsync();
+    public async Task AlAparecerAsync()
+    {
+        await CargarAsync();
+        if (DatosPago is null && EsComprador)
+        {
+            try { DatosPago = await api.GetAsync<DatosTransferenciaDto>("api/pagos/transferencia"); }
+            catch { /* la tarjeta de pago se oculta si no hay datos */ }
+        }
+    }
+
+    partial void OnPedidoChanged(PedidoDto? value) => OnPropertyChanged(nameof(TotalTransferir));
 
     [RelayCommand]
     private Task CargarAsync() => EjecutarAsync(async () =>
@@ -602,10 +646,87 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
         Pedido = await api.GetAsync<PedidoDto>($"api/pedidos/{_codigo}");
     });
 
+    // ----- Pago por transferencia -----
+
+    [RelayCommand]
+    private async Task CopiarAsync(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return;
+        await Clipboard.Default.SetTextAsync(texto);
+        Dialogos.Aviso($"Copiado: {texto}");
+    }
+
+    [RelayCommand]
+    private async Task SubirComprobanteAsync()
+    {
+        FileResult? archivo;
+        try
+        {
+            archivo = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Elegí el comprobante (foto o PDF)",
+                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
+                    [DevicePlatform.Android] = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            await Dialogos.Alerta("Archivos", $"No se pudo abrir el selector de archivos: {ex.Message}", TipoAlerta.Error);
+            return;
+        }
+        if (archivo is null) return;
+
+        var ok = await EjecutarAsync(async () =>
+        {
+            await using var stream = await archivo.OpenReadAsync();
+            if (stream.CanSeek && stream.Length > 5 * 1024 * 1024)
+                throw new ApiException(400, "El archivo supera los 5 MB.");
+            Pedido = await api.SubirArchivoAsync<PedidoDto>($"api/pedidos/{_codigo}/comprobante", stream, archivo.FileName);
+        });
+        if (ok) await Dialogos.Exito("¡Comprobante enviado!", "Lo vamos a verificar y te avisamos por email cuando confirmemos el pago.");
+    }
+
+    [RelayCommand]
+    private Task VerComprobanteAsync() => EjecutarAsync(async () =>
+    {
+        var archivo = await api.DescargarAsync($"api/pedidos/{_codigo}/comprobante", $"comprobante-{_codigo}");
+        await Archivos.AbrirAsync(archivo);
+    });
+
+    // ----- Comprobante del pedido en PDF -----
+
+    [RelayCommand]
+    private Task AbrirPdfAsync() => EjecutarAsync(async () =>
+        await Archivos.AbrirAsync(await api.DescargarAsync($"api/reportes/pedido/{_codigo}", $"TechHub-Pedido-{_codigo}.pdf")));
+
+    [RelayCommand]
+    private Task CompartirPdfAsync() => EjecutarAsync(async () =>
+        await Archivos.CompartirAsync(await api.DescargarAsync($"api/reportes/pedido/{_codigo}", $"TechHub-Pedido-{_codigo}.pdf"),
+            $"Pedido {_codigo}"));
+
+    [RelayCommand]
+    private async Task EnviarPdfPorEmailAsync()
+    {
+        string? destino = null;
+        if (EsAdmin)
+        {
+            destino = await Dialogos.Pedir("Enviar por email", "Email del destinatario:", Keyboard.Email);
+            if (string.IsNullOrWhiteSpace(destino)) return;
+        }
+
+        var ok = await EjecutarAsync(async () =>
+            await api.PostAsync("api/reportes/enviar", new { tipo = "pedido", codigo = _codigo, email = destino }));
+        if (ok) Dialogos.Aviso(EsAdmin ? $"PDF enviado a {destino}." : "Te enviamos el PDF a tu email.");
+    }
+
+    // ----- Acciones -----
+
     [RelayCommand]
     private async Task CancelarAsync()
     {
-        if (!await Dialogos.Confirmar("Cancelar pedido", "¿Seguro que querés cancelar este pedido? Las unidades vuelven al stock.", "Cancelar pedido", "Volver"))
+        if (!await Dialogos.Confirmar("Cancelar pedido", "¿Seguro que querés cancelar este pedido? Las unidades vuelven al stock.", "Cancelar pedido", "Volver", peligro: true))
             return;
 
         var ok = await EjecutarAsync(async () =>
@@ -618,10 +739,35 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
     }
 
     [RelayCommand]
-    private Task ConfirmarAsync() => CambiarEstadoAsync("Confirmado", "¿Marcar el pedido como confirmado (pago recibido)?");
+    private async Task AprobarPagoAsync()
+    {
+        if (!await Dialogos.Confirmar("Aprobar pago", "¿Confirmás que la transferencia ingresó? Se le enviará al cliente el comprobante por email.",
+                "Aprobar", "Cancelar"))
+            return;
+        var ok = await EjecutarAsync(async () =>
+        {
+            Pedido = await api.PutAsync<PedidoDto>($"api/pedidos/{_codigo}/estado", new { estado = "Confirmado" });
+        });
+        if (ok) await Dialogos.Exito("¡Pago aprobado!", "El cliente va a recibir el comprobante por email.", 1800);
+    }
 
     [RelayCommand]
-    private Task EntregarAsync() => CambiarEstadoAsync("Entregado", "¿Marcar el pedido como entregado? La venta queda cerrada.");
+    private async Task RechazarPagoAsync()
+    {
+        var motivo = await Dialogos.Pedir("Rechazar pago", "Motivo (lo verá el cliente):", Keyboard.Text,
+            "Ej: el monto no coincide");
+        if (string.IsNullOrWhiteSpace(motivo)) return;
+
+        var ok = await EjecutarAsync(async () =>
+        {
+            Pedido = await api.PostAsync<PedidoDto>($"api/pedidos/{_codigo}/rechazar-pago", new { motivo });
+        });
+        if (ok) Dialogos.Aviso("Pago rechazado. El pedido volvió a esperando pago.");
+    }
+
+    [RelayCommand]
+    private Task EntregarAsync() =>
+        CambiarEstadoAsync("Entregado", "¿Marcar el pedido como entregado? La venta queda cerrada.", "Pedido entregado.");
 
     /// <summary>Agrega al carrito los productos del pedido que sigan disponibles, con el precio y stock actuales.</summary>
     [RelayCommand]
@@ -650,7 +796,7 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
 
         if (agregados == 0)
         {
-            await Dialogos.Alerta("Sin stock", "Ninguno de los productos de este pedido tiene stock disponible en este momento.");
+            await Dialogos.Advertencia("Sin stock", "Ninguno de los productos de este pedido tiene stock disponible en este momento.");
             return;
         }
         Dialogos.Aviso(sinStock == 0
@@ -659,14 +805,14 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
         await IrAsync("//tienda/carrito");
     }
 
-    private async Task CambiarEstadoAsync(string estado, string pregunta)
+    private async Task CambiarEstadoAsync(string estado, string pregunta, string aviso)
     {
-        if (!await Dialogos.Confirmar("Cambiar estado", pregunta)) return;
+        if (!await Dialogos.Confirmar("Cambiar estado", pregunta, "Confirmar", "Cancelar")) return;
         var ok = await EjecutarAsync(async () =>
         {
             Pedido = await api.PutAsync<PedidoDto>($"api/pedidos/{_codigo}/estado", new { estado });
         });
-        if (ok) Dialogos.Aviso($"Pedido {estado.ToLowerInvariant()}.");
+        if (ok) Dialogos.Aviso(aviso);
     }
 }
 
@@ -711,7 +857,7 @@ public partial class CuentaViewModel(ApiClient api, SesionService sesion) : Base
     {
         if (string.IsNullOrWhiteSpace(Nombre))
         {
-            await Dialogos.Alerta("Datos incompletos", "El nombre es obligatorio.");
+            await Dialogos.Advertencia("Datos incompletos", "El nombre es obligatorio.");
             return;
         }
 
@@ -740,7 +886,7 @@ public partial class CuentaViewModel(ApiClient api, SesionService sesion) : Base
     [RelayCommand]
     private async Task CerrarSesionAsync()
     {
-        if (!await Dialogos.Confirmar("Cerrar sesión", "¿Querés cerrar la sesión?")) return;
+        if (!await Dialogos.Confirmar("Cerrar sesión", "¿Querés cerrar la sesión?", "Cerrar sesión", "Cancelar")) return;
         sesion.Cerrar();
         await AlAparecerAsync();
     }

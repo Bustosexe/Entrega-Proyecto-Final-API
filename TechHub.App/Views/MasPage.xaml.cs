@@ -25,6 +25,7 @@ public partial class MasPage : ContentPage
     private static Task AbrirAbm(string tipo) =>
         Shell.Current.GoToAsync("abmlista", new Dictionary<string, object> { ["Tipo"] = tipo });
 
+    private async void OnReportes(object? sender, EventArgs e) => await Shell.Current.GoToAsync("reportes");
     private async void OnCategorias(object? sender, EventArgs e) => await AbrirAbm("categorias");
     private async void OnProveedores(object? sender, EventArgs e) => await AbrirAbm("proveedores");
     private async void OnClientes(object? sender, EventArgs e) => await AbrirAbm("clientes");
@@ -32,7 +33,7 @@ public partial class MasPage : ContentPage
 
     private async void OnCerrarSesion(object? sender, EventArgs e)
     {
-        if (!await Dialogos.Confirmar("Cerrar sesión", "¿Querés cerrar la sesión de administrador?")) return;
+        if (!await Dialogos.Confirmar("Cerrar sesión", "¿Querés cerrar la sesión de administrador?", "Cerrar sesión", "Cancelar")) return;
         _sesion.Cerrar();
         await Shell.Current.GoToAsync(AppShell.RutaTienda);
     }

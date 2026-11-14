@@ -7,7 +7,7 @@
              Title="Mi cuenta">
 
     <ScrollView>
-        <Grid Padding="20">
+        <Grid Padding="24,16">
 
             <!-- Visitante -->
             <VerticalStackLayout IsVisible="{Binding EsVisitante}" Spacing="14" Padding="0,40,0,0">
@@ -27,25 +27,25 @@
                 <Label Text="{Binding Email}" Style="{StaticResource Secundario}" />
                 <Label Text="{Binding Documento, StringFormat='DNI/CUIT: {0}'}" Style="{StaticResource Secundario}" Margin="0,0,0,10" />
 
-                <Label Text="Nombre" Style="{StaticResource Rotulo}" />
+                <Label Text="Nombre" Style="{StaticResource Mini}" Margin="0,8,0,0" />
                 <Border Style="{StaticResource CampoBorde}">
                     <Entry Text="{Binding Nombre}" MaxLength="150" />
                 </Border>
-                <Label Text="Teléfono" Style="{StaticResource Rotulo}" />
+                <Label Text="Teléfono" Style="{StaticResource Mini}" Margin="0,8,0,0" />
                 <Border Style="{StaticResource CampoBorde}">
                     <Entry Text="{Binding Telefono}" Keyboard="Telephone" MaxLength="30" />
                 </Border>
-                <Label Text="Dirección" Style="{StaticResource Rotulo}" />
+                <Label Text="Dirección" Style="{StaticResource Mini}" Margin="0,8,0,0" />
                 <Border Style="{StaticResource CampoBorde}">
                     <Entry Text="{Binding Direccion}" MaxLength="200" />
                 </Border>
 
                 <Label Text="Cambiar contraseña (opcional)" Style="{StaticResource Subtitulo}" Margin="0,16,0,0" />
-                <Label Text="Contraseña actual" Style="{StaticResource Rotulo}" />
+                <Label Text="Contraseña actual" Style="{StaticResource Mini}" Margin="0,8,0,0" />
                 <Border Style="{StaticResource CampoBorde}">
                     <Entry Text="{Binding PasswordActual}" IsPassword="True" />
                 </Border>
-                <Label Text="Nueva contraseña" Style="{StaticResource Rotulo}" />
+                <Label Text="Nueva contraseña" Style="{StaticResource Mini}" Margin="0,8,0,0" />
                 <Border Style="{StaticResource CampoBorde}">
                     <Entry Text="{Binding NuevaPassword}" IsPassword="True" />
                 </Border>

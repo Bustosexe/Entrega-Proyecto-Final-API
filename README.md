@@ -27,15 +27,25 @@ TechHub.App  (app Android, .NET MAUI)  ──HTTP + JWT──►  TechHub.Api  (
 - **Seguimiento de pedidos:** **línea de tiempo** Pendiente → Confirmado → Entregado y botón **"Volver a comprar"**, que carga el carrito con el stock y los precios actuales.
 - **Panel del admin:** **gráfico de barras** con la facturación de los últimos 7 días (dibujado con Microsoft.Maui.Graphics) y **ranking de productos más vendidos**.
 
-### Ciclo de un pedido
+- **Pago por transferencia:** el carrito muestra el alias, y el pedido trae los datos para transferir con botón **copiar**. El comprador **sube el comprobante** (foto o PDF) desde la app y el admin lo revisa: **aprueba** o **rechaza** el pago, indicando el motivo.
+- **Reportes en PDF:** comprobante de pedido, **inventario valorizado** y **ventas por período**. Se pueden ver, compartir (WhatsApp, Drive…) o **enviar por email** desde Gmail.
+- **Emails automáticos:** al crear el pedido, con los datos de transferencia, y al confirmar el pago, con el comprobante en PDF adjunto.
+- **Diseño claro minimalista:** fondo blanco, botones negros tipo píldora, tarjetas con borde fino y tipografía grande.
+
+### Ciclo de un pedido (pago por transferencia)
 
 ```
-Comprador confirma el carrito ──► PENDIENTE (stock reservado)
-                                     │ Admin: "Confirmar pago"
-                                     ▼
-                                 CONFIRMADO ──► Admin: "Entregado" ──► ENTREGADO (venta cerrada)
-   PENDIENTE o CONFIRMADO ──► "Cancelar" ──► CANCELADO (el stock vuelve)
+Comprador confirma el carrito ──► ESPERANDO PAGO (Pendiente, stock reservado) ── email con alias/CBU
+        │ sube el comprobante (foto o PDF)
+        ▼
+PAGO EN REVISIÓN (EnRevision) ── Admin: "Rechazar" (con motivo) ──► vuelve a ESPERANDO PAGO
+        │ Admin: "Aprobar pago"
+        ▼
+PAGO CONFIRMADO (Confirmado) ── email con el comprobante PDF ──► Admin: "Entregado" ──► ENTREGADO
+Antes de entregarse, el pedido se puede CANCELAR y el stock vuelve.
 ```
+
+La facturación del panel y de los reportes cuenta solo los pedidos **confirmados o entregados**.
 
 ---
 
@@ -64,10 +74,34 @@ Al iniciar, la API aplica las migraciones y crea el administrador inicial **admi
 
 Con `"Seed:DatosDemo": true` (activado por defecto), la API carga sola al arrancar:
 - 2 proveedores.
-- 16 productos con imagen (procesadores, placas de video, motherboards, RAM, SSD y fuentes), con stock cargado mediante compras (Ingresos). Uno queda sin stock y varios con stock bajo, para mostrar las alertas.
+- 17 productos con foto (procesadores, placas de video, motherboards, RAM, SSD y fuentes), con stock cargado mediante compras (Ingresos). Uno queda sin stock y varios con stock bajo, para mostrar las alertas.
 - Un comprador de prueba, **comprador@techhub.local / Comprador123!**, con 3 pedidos: uno entregado, uno confirmado y uno pendiente.
 
-La carga es idempotente: solo agrega los productos que todavía no existen. Las imágenes de demo están en `wwwroot/demo` y son ilustraciones genéricas. Los precios son orientativos.
+La carga es idempotente: solo agrega los productos que todavía no existen (por nombre o por imagen). Las fotos de producto están en `wwwroot/demo` (PNG de 600×600 con fondo blanco) y se usan solo con fines académicos. Si se reemplazan, hay que subir `VersionFotosDemo` en `TechHub.App/Config/ApiConfig.cs` para que la app no muestre las anteriores desde la caché. Los precios son orientativos.
+
+### Migración de pagos y comprobantes
+
+Esta versión agrega a `Salidas` las columnas `ComprobanteArchivo`, `ComprobanteFecha` y `MotivoRechazo`:
+
+```bash
+cd TechHub.Api
+dotnet ef migrations add PagosYComprobantes
+```
+
+La API aplica la migración sola al iniciar.
+
+### Configurar pagos y Gmail
+
+- **Datos de transferencia:** completar la sección `Pagos` de `appsettings.json` (alias, CBU/CVU, titular, CUIT y banco).
+- **Gmail:**
+  1. En la cuenta de Google, activar la **verificación en 2 pasos**.
+  2. Entrar a <https://myaccount.google.com/apppasswords> y crear una **contraseña de aplicación** (16 caracteres).
+  3. Copiar `appsettings.Local.example.json` como `appsettings.Local.json` y poner el Gmail y esa contraseña. Para producción, ponerlos en la sección `Email` de `appsettings.Production.json`.
+  4. Los dos archivos están en `.gitignore`: **la contraseña nunca se sube a GitHub**.
+
+Sin esta configuración la app funciona igual: los emails automáticos se omiten (queda registrado en el log) y el envío manual avisa que no está configurado.
+
+Los comprobantes de pago se guardan en `TechHub.Api/App_Data/comprobantes`, fuera de `wwwroot`, así que **no son públicos**. Solo se descargan por la API, y solo el dueño del pedido o un admin pueden verlos.
 
 ## 3. Ejecutar en la PC con el emulador
 
@@ -147,6 +181,13 @@ Decisiones de diseño:
 | GET `/api/pedidos`, PUT `/{codigo}/estado` | — | — | ✅ |
 | Productos (ABM e imagen), categorías, proveedores, clientes, ingresos, usuarios | — | — | ✅ |
 | Dashboard: `/resumen`, `/ventas-diarias?dias=7`, `/top-productos?cantidad=5` | — | — | ✅ |
+| GET `/api/pagos/transferencia` (alias, CBU, titular) | ✅ | ✅ | ✅ |
+| POST `/api/pedidos/{codigo}/comprobante` (multipart, campo `archivo`) | — | ✅ (su pedido) | — |
+| GET `/api/pedidos/{codigo}/comprobante` | — | ✅ (su pedido) | ✅ |
+| POST `/api/pedidos/{codigo}/rechazar-pago` `{ motivo }` | — | — | ✅ |
+| GET `/api/reportes/pedido/{codigo}` (PDF) | — | ✅ (su pedido) | ✅ |
+| GET `/api/reportes/inventario`, `/api/reportes/ventas?desde=&hasta=` (PDF) | — | — | ✅ |
+| POST `/api/reportes/enviar` `{ tipo, email, codigo, desde, hasta }` | — | ✅ (su pedido, a su email) | ✅ |
 
 ## 7. Paginación
 

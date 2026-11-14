@@ -8,15 +8,17 @@ namespace TechHub.App.Models;
 /// <summary>Colores usados desde código (badges de estado y stock).</summary>
 public static class Paleta
 {
-    public static readonly Color Primario = Color.FromArgb("#0891B2");
-    public static readonly Color Oscuro = Color.FromArgb("#0F172A");
+    public static readonly Color Primario = Color.FromArgb("#4F46E5");
+    public static readonly Color Oscuro = Color.FromArgb("#1E1B4B");
     public static readonly Color Blanco = Colors.White;
     public static readonly Color Exito = Color.FromArgb("#16A34A");
     public static readonly Color Alerta = Color.FromArgb("#D97706");
     public static readonly Color Peligro = Color.FromArgb("#DC2626");
-    public static readonly Color Info = Color.FromArgb("#2563EB");
+    public static readonly Color Info = Color.FromArgb("#0284C7");
     public static readonly Color Gris = Color.FromArgb("#64748B");
-    public static readonly Color FondoChip = Color.FromArgb("#E2E8F0");
+    public static readonly Color FondoChip = Color.FromArgb("#E0E7FF");
+    public static readonly Color Violeta = Color.FromArgb("#C026D3");
+    public static readonly Color Linea = Color.FromArgb("#E5E7EB");
 }
 
 public static class Formato
@@ -156,6 +158,11 @@ public class PedidoDto
     public string Codigo { get; set; } = string.Empty;
     public DateTime Fecha { get; set; }
     public string Estado { get; set; } = string.Empty;
+    /// <summary>Texto para mostrar: "Esperando pago", "Pago en revisión", etc.</summary>
+    public string EstadoTexto { get; set; } = string.Empty;
+    public bool TieneComprobante { get; set; }
+    public DateTime? ComprobanteFecha { get; set; }
+    public string? MotivoRechazo { get; set; }
     public int ClienteId { get; set; }
     public string Cliente { get; set; } = string.Empty;
     public string? ClienteTelefono { get; set; }
@@ -169,10 +176,13 @@ public class PedidoDto
     [JsonIgnore] public string TotalTexto => Formato.Moneda(Total);
     [JsonIgnore] public string Resumen => $"{Unidades} {(Unidades == 1 ? "unidad" : "unidades")} · {Items.Count} {(Items.Count == 1 ? "producto" : "productos")}";
 
+    [JsonIgnore] public string ComprobanteFechaTexto => ComprobanteFecha is DateTime f ? Formato.Fecha(f) : string.Empty;
+
     [JsonIgnore]
     public Color EstadoColor => Estado switch
     {
         "Pendiente" => Paleta.Alerta,
+        "EnRevision" => Paleta.Violeta,
         "Confirmado" => Paleta.Info,
         "Entregado" => Paleta.Exito,
         "Cancelado" => Paleta.Peligro,
@@ -208,6 +218,7 @@ public class ResumenDto
     public int UnidadesEnStock { get; set; }
     public decimal ValorInventario { get; set; }
     public int PedidosPendientes { get; set; }
+    public int PagosEnRevision { get; set; }
     public int VentasHoy { get; set; }
     public decimal FacturacionHoy { get; set; }
     public decimal FacturacionMes { get; set; }
@@ -237,4 +248,28 @@ public class TopProductoDto
     [JsonIgnore] public string PuestoTexto => $"#{Puesto}";
     [JsonIgnore] public string ImagenCompleta => ApiConfig.UrlCompleta(ImagenUrl);
     [JsonIgnore] public string Detalle => $"{Unidades} {(Unidades == 1 ? "unidad" : "unidades")} · {Formato.Moneda(Total)}";
+}
+
+public class DatosTransferenciaDto
+{
+    public string Alias { get; set; } = string.Empty;
+    public string Cbu { get; set; } = string.Empty;
+    public string Titular { get; set; } = string.Empty;
+    public string Cuit { get; set; } = string.Empty;
+    public string Banco { get; set; } = string.Empty;
+    public int HorasReserva { get; set; }
+}
+
+/// <summary>Estados de pedido: código de la API y texto para mostrar.</summary>
+public static class EstadosPedido
+{
+    public static readonly (string Codigo, string Texto)[] Filtros =
+    [
+        ("", "Todos"),
+        ("Pendiente", "Esperando pago"),
+        ("EnRevision", "Pago en revisión"),
+        ("Confirmado", "Pago confirmado"),
+        ("Entregado", "Entregado"),
+        ("Cancelado", "Cancelado")
+    ];
 }

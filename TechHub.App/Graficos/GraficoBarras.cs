@@ -9,11 +9,11 @@ namespace TechHub.App.Graficos;
 /// </summary>
 public class GraficoBarras(IReadOnlyList<(string Etiqueta, double Valor)> datos) : IDrawable
 {
-    private static readonly Color ColorBarra = Color.FromArgb("#0891B2");
-    private static readonly Color ColorBarraHoy = Color.FromArgb("#0F172A");
-    private static readonly Color ColorVacio = Color.FromArgb("#E2E8F0");
+    private static readonly Color ColorBarra = Color.FromArgb("#C7D2FE");
+    private static readonly Color ColorBarraHoy = Color.FromArgb("#4F46E5");
+    private static readonly Color ColorVacio = Color.FromArgb("#EEF2FF");
     private static readonly Color ColorTexto = Color.FromArgb("#64748B");
-    private static readonly Color ColorGuia = Color.FromArgb("#EEF2F7");
+    private static readonly Color ColorGuia = Color.FromArgb("#F3F4F6");
 
     public void Draw(ICanvas canvas, RectF r)
     {
@@ -46,7 +46,7 @@ public class GraficoBarras(IReadOnlyList<(string Etiqueta, double Valor)> datos)
             var y = r.Bottom - margenInferior - alto;
 
             canvas.FillColor = valor <= 0 ? ColorVacio : i == datos.Count - 1 ? ColorBarraHoy : ColorBarra;
-            canvas.FillRoundedRectangle(x, y, ancho, alto, 4);
+            canvas.FillRoundedRectangle(x, y, ancho, alto, 6);
 
             canvas.FontColor = ColorTexto;
             canvas.DrawString(etiqueta, r.Left + i * anchoColumna, r.Bottom - margenInferior + 4, anchoColumna, 16,

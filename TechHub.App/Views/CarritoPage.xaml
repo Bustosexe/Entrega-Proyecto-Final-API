@@ -5,59 +5,77 @@
              xmlns:s="clr-namespace:TechHub.App.Services"
              x:Class="TechHub.App.Views.CarritoPage"
              x:DataType="vm:CarritoViewModel"
-             Title="Mi carrito">
+             Title="Carrito">
 
     <Grid RowDefinitions="*,Auto">
 
-        <CollectionView ItemsSource="{Binding Carrito.Items}" Margin="12,12,12,0">
+        <CollectionView ItemsSource="{Binding Carrito.Items}" Margin="20,8,20,0">
+            <CollectionView.Header>
+                <Label Text="Tu carrito" Style="{StaticResource Titulo}" Margin="0,0,0,12" IsVisible="{Binding TieneItems}" />
+            </CollectionView.Header>
             <CollectionView.ItemsLayout>
-                <LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="18" />
             </CollectionView.ItemsLayout>
             <CollectionView.EmptyView>
-                <VerticalStackLayout Padding="30,80" Spacing="14" HorizontalOptions="Center">
-                    <Image Source="ic_carrito.png" HeightRequest="56" Opacity="0.35" />
-                    <Label Text="Tu carrito está vacío" Style="{StaticResource Subtitulo}" HorizontalTextAlignment="Center" />
-                    <Label Text="Explorá el catálogo y agregá los componentes para tu PC." Style="{StaticResource Secundario}"
+                <VerticalStackLayout Padding="30,90" Spacing="14" HorizontalOptions="Center">
+                    <Border Style="{StaticResource CajaImagen}" WidthRequest="96" HeightRequest="96" StrokeShape="RoundRectangle 48"
+                            HorizontalOptions="Center" Padding="26">
+                        <Image Source="ic_carrito.png" Opacity="0.5" />
+                    </Border>
+                    <Label Text="Tu carrito está vacío" Style="{StaticResource Subtitulo}" FontSize="20" HorizontalTextAlignment="Center" />
+                    <Label Text="Explorá el catálogo y agregá los componentes para tu próxima PC." Style="{StaticResource Secundario}"
                            HorizontalTextAlignment="Center" />
-                    <Button Text="Ver catálogo" Command="{Binding IrAlCatalogoCommand}" />
+                    <Button Text="Ver catálogo" Command="{Binding IrAlCatalogoCommand}" Margin="0,8,0,0" />
                 </VerticalStackLayout>
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="s:CarritoItem">
-                    <Border Style="{StaticResource Tarjeta}" Padding="10">
-                        <Grid ColumnDefinitions="70,*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12">
-                            <Image Grid.RowSpan="3" Source="{Binding ImagenCompleta}" WidthRequest="70" HeightRequest="70" Aspect="AspectFit" />
-                            <Label Grid.Column="1" Text="{Binding Nombre}" FontAttributes="Bold" MaxLines="2" LineBreakMode="TailTruncation" />
-                            <Button Grid.Column="2" Text="✕" Style="{StaticResource BotonCircular}" WidthRequest="32" HeightRequest="32"
-                                    CornerRadius="16" FontSize="13" Clicked="OnQuitar" />
-                            <Label Grid.Row="1" Grid.Column="1" Text="{Binding PrecioTexto}" Style="{StaticResource Secundario}" />
-                            <HorizontalStackLayout Grid.Row="2" Grid.Column="1" Spacing="8" Margin="0,6,0,0">
-                                <Button Text="−" Style="{StaticResource BotonCircular}" WidthRequest="32" HeightRequest="32" CornerRadius="16" Clicked="OnRestar" />
-                                <Label Text="{Binding Cantidad}" FontAttributes="Bold" FontSize="16" VerticalOptions="Center"
-                                       WidthRequest="26" HorizontalTextAlignment="Center" />
-                                <Button Text="+" Style="{StaticResource BotonCircular}" WidthRequest="32" HeightRequest="32" CornerRadius="16" Clicked="OnSumar" />
-                            </HorizontalStackLayout>
-                            <Label Grid.Row="2" Grid.Column="2" Text="{Binding SubtotalTexto}" Style="{StaticResource Precio}"
-                                   FontSize="15" VerticalOptions="End" />
+                    <Grid ColumnDefinitions="84,*,Auto" RowDefinitions="Auto,Auto,*" ColumnSpacing="14">
+                        <Border Grid.RowSpan="3" Style="{StaticResource CajaImagen}" WidthRequest="84" HeightRequest="84" Padding="8">
+                            <Image Source="{Binding ImagenCompleta}" Aspect="AspectFit" />
+                        </Border>
+                        <Label Grid.Column="1" Text="{Binding Nombre}" FontAttributes="Bold" MaxLines="2" LineBreakMode="TailTruncation" />
+                        <Button Grid.Column="2" Text="✕" Style="{StaticResource BotonTexto}" WidthRequest="32" HeightRequest="32"
+                                Padding="0" FontSize="13" TextColor="{StaticResource TextoTenue}" Clicked="OnQuitar" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding PrecioTexto}" Style="{StaticResource Mini}" />
+                        <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*" Margin="0,8,0,0">
+                            <Border Style="{StaticResource CampoBorde}" Padding="2" StrokeShape="RoundRectangle 20" VerticalOptions="Center">
+                                <HorizontalStackLayout Spacing="2">
+                                    <Button Text="−" Style="{StaticResource BotonCircular}" BackgroundColor="Transparent"
+                                            WidthRequest="34" HeightRequest="34" CornerRadius="17" Clicked="OnRestar" />
+                                    <Label Text="{Binding Cantidad}" FontAttributes="Bold" FontSize="15" VerticalOptions="Center"
+                                           WidthRequest="26" HorizontalTextAlignment="Center" />
+                                    <Button Text="+" Style="{StaticResource BotonCircular}" BackgroundColor="Transparent"
+                                            WidthRequest="34" HeightRequest="34" CornerRadius="17" Clicked="OnSumar" />
+                                </HorizontalStackLayout>
+                            </Border>
+                            <Label Grid.Column="1" Text="{Binding SubtotalTexto}" Style="{StaticResource Precio}" FontSize="16"
+                                   HorizontalOptions="End" VerticalOptions="Center" />
                         </Grid>
-                    </Border>
+                    </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <!-- Resumen y confirmación -->
-        <Border Grid.Row="1" IsVisible="{Binding TieneItems}" BackgroundColor="White" Stroke="{StaticResource Borde}" Padding="16,12">
-            <VerticalStackLayout Spacing="10">
+        <!-- Resumen, forma de pago y confirmación -->
+        <Border Grid.Row="1" IsVisible="{Binding TieneItems}" BackgroundColor="White" StrokeThickness="1"
+                Stroke="{StaticResource Borde}" StrokeShape="RoundRectangle 24,24,0,0" Padding="20,18,20,16">
+            <VerticalStackLayout Spacing="12">
+                <Border Style="{StaticResource CampoBorde}" Padding="14,10">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                        <Label Text="$" FontAttributes="Bold" FontSize="16" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="{Binding PagoTexto}" Style="{StaticResource Mini}" VerticalOptions="Center" />
+                    </Grid>
+                </Border>
                 <Border Style="{StaticResource CampoBorde}">
                     <Entry Text="{Binding Observaciones}" Placeholder="Observaciones (opcional): envío, horario..." MaxLength="500" />
                 </Border>
                 <Grid ColumnDefinitions="*,Auto">
                     <VerticalStackLayout>
                         <Label Text="Total" Style="{StaticResource Secundario}" />
-                        <Label Text="{Binding UnidadesTexto}" Style="{StaticResource Secundario}" FontSize="12" />
+                        <Label Text="{Binding UnidadesTexto}" Style="{StaticResource Mini}" />
                     </VerticalStackLayout>
-                    <Label Grid.Column="1" Text="{Binding TotalTexto}" FontSize="24" FontAttributes="Bold"
-                           TextColor="{StaticResource Oscuro}" VerticalOptions="Center" />
+                    <Label Grid.Column="1" Text="{Binding TotalTexto}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
                 </Grid>
                 <Button Text="Confirmar pedido" Command="{Binding ConfirmarCommand}" IsEnabled="{Binding NoEstaOcupado}" />
                 <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" HeightRequest="24" />

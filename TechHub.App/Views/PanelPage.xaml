@@ -9,19 +9,25 @@
 
     <RefreshView IsRefreshing="{Binding EstaRefrescando}" Command="{Binding CargarCommand}">
         <ScrollView>
-            <VerticalStackLayout Padding="14" Spacing="12">
+            <VerticalStackLayout Padding="20,12" Spacing="14">
 
                 <Label Text="{Binding Saludo}" Style="{StaticResource Titulo}" />
 
-                <!-- Pedidos pendientes (acción principal del admin) -->
-                <Border Style="{StaticResource Tarjeta}" BackgroundColor="{StaticResource Oscuro}" Stroke="{StaticResource Oscuro}">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <VerticalStackLayout>
-                            <Label Text="Pedidos pendientes" TextColor="#94A3B8" FontSize="13" />
-                            <Label Text="{Binding Pendientes}" TextColor="White" FontSize="30" FontAttributes="Bold" />
-                        </VerticalStackLayout>
-                        <Button Grid.Column="1" Text="Ver pedidos" Command="{Binding VerPendientesCommand}" VerticalOptions="Center" />
-                    </Grid>
+                <!-- Pagos a revisar (acción principal del admin) -->
+                <Border Background="{StaticResource HeroBrush}" StrokeThickness="0" StrokeShape="RoundRectangle 24" Padding="20">
+                    <VerticalStackLayout Spacing="14">
+                        <Grid ColumnDefinitions="*,*">
+                            <VerticalStackLayout>
+                                <Label Text="Pagos a revisar" TextColor="#E0E7FF" FontSize="13" />
+                                <Label Text="{Binding EnRevision}" TextColor="White" FontSize="34" FontAttributes="Bold" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1">
+                                <Label Text="Esperando pago" TextColor="#E0E7FF" FontSize="13" />
+                                <Label Text="{Binding Pendientes}" TextColor="White" FontSize="34" FontAttributes="Bold" />
+                            </VerticalStackLayout>
+                        </Grid>
+                        <Button Text="Ver pedidos" Command="{Binding VerPendientesCommand}" BackgroundColor="White" TextColor="{StaticResource Primario}" />
+                    </VerticalStackLayout>
                 </Border>
 
                 <!-- Indicadores -->
@@ -37,7 +43,7 @@
                         <VerticalStackLayout>
                             <Label Text="Facturación del mes" Style="{StaticResource Secundario}" />
                             <Label Text="{Binding FacturacionMes}" Style="{StaticResource KpiValor}" />
-                            <Label Text="sin pedidos cancelados" Style="{StaticResource Secundario}" FontSize="12" />
+                            <Label Text="pagos confirmados" Style="{StaticResource Secundario}" FontSize="12" />
                         </VerticalStackLayout>
                     </Border>
                     <Border Grid.Row="1" Style="{StaticResource Tarjeta}">

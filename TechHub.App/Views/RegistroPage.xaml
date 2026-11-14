@@ -7,42 +7,42 @@
              Title="Crear cuenta">
 
     <ScrollView>
-        <VerticalStackLayout Padding="22,20" Spacing="6">
-            <Label Text="Creá tu cuenta" Style="{StaticResource Titulo}" />
+        <VerticalStackLayout Padding="28,16" Spacing="6">
+            <Label Text="Creá tu cuenta" FontSize="32" FontAttributes="Bold" />
             <Label Text="Con tu cuenta podés comprar desde la app y seguir el estado de tus pedidos."
                    Style="{StaticResource Secundario}" Margin="0,0,0,8" />
 
-            <Label Text="Nombre y apellido / Razón social *" Style="{StaticResource Rotulo}" />
+            <Label Text="Nombre y apellido / Razón social *" Style="{StaticResource Mini}" Margin="0,8,0,0" />
             <Border Style="{StaticResource CampoBorde}">
                 <Entry Text="{Binding Nombre}" MaxLength="150" />
             </Border>
 
-            <Label Text="DNI o CUIT *" Style="{StaticResource Rotulo}" />
+            <Label Text="DNI o CUIT *" Style="{StaticResource Mini}" Margin="0,8,0,0" />
             <Border Style="{StaticResource CampoBorde}">
                 <Entry Text="{Binding Documento}" Keyboard="Numeric" Placeholder="30123456" MaxLength="13" />
             </Border>
 
-            <Label Text="Email *" Style="{StaticResource Rotulo}" />
+            <Label Text="Email *" Style="{StaticResource Mini}" Margin="0,8,0,0" />
             <Border Style="{StaticResource CampoBorde}">
                 <Entry Text="{Binding Email}" Keyboard="Email" Placeholder="tu@email.com" MaxLength="150" />
             </Border>
 
-            <Label Text="Teléfono" Style="{StaticResource Rotulo}" />
+            <Label Text="Teléfono" Style="{StaticResource Mini}" Margin="0,8,0,0" />
             <Border Style="{StaticResource CampoBorde}">
                 <Entry Text="{Binding Telefono}" Keyboard="Telephone" MaxLength="30" />
             </Border>
 
-            <Label Text="Dirección (para envíos)" Style="{StaticResource Rotulo}" />
+            <Label Text="Dirección (para envíos)" Style="{StaticResource Mini}" Margin="0,8,0,0" />
             <Border Style="{StaticResource CampoBorde}">
                 <Entry Text="{Binding Direccion}" MaxLength="200" />
             </Border>
 
-            <Label Text="Contraseña * (mínimo 6 caracteres)" Style="{StaticResource Rotulo}" />
+            <Label Text="Contraseña * (mínimo 6 caracteres)" Style="{StaticResource Mini}" Margin="0,8,0,0" />
             <Border Style="{StaticResource CampoBorde}">
                 <Entry Text="{Binding Password}" IsPassword="True" MaxLength="100" />
             </Border>
 
-            <Label Text="Repetir contraseña *" Style="{StaticResource Rotulo}" />
+            <Label Text="Repetir contraseña *" Style="{StaticResource Mini}" Margin="0,8,0,0" />
             <Border Style="{StaticResource CampoBorde}">
                 <Entry Text="{Binding Password2}" IsPassword="True" MaxLength="100" />
             </Border>

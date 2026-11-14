@@ -21,13 +21,19 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.4" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.23" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.0" />
+    <!-- Reportes en PDF -->
+    <PackageReference Include="QuestPDF" Version="2025.7.3" />
+    <!-- Envío de emails por SMTP (Gmail) -->
+    <PackageReference Include="MailKit" Version="4.17.0" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Las imágenes subidas no se publican desde la PC: viven solo en el servidor -->
     <Content Update="wwwroot\uploads\**" CopyToPublishDirectory="Never" />
     <Content Update="appsettings.Production.example.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Local.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Local.example.json" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>

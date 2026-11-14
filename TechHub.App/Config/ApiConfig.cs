@@ -18,11 +18,22 @@ public static class ApiConfig
 
     public static string BaseUrl => UsarServidorLocal ? UrlLocal : UrlProduccion;
 
+    /// <summary>
+    /// Versión de las fotos de demo (wwwroot/demo). Al reemplazar esas fotos se sube este número
+    /// para que la app no siga mostrando las anteriores guardadas en caché.
+    /// (Las fotos que sube el admin no lo necesitan: cada una tiene un nombre único).
+    /// </summary>
+    public const int VersionFotosDemo = 2;
+
     /// <summary>Convierte la ruta relativa de una imagen (/uploads/x.jpg) en URL completa.</summary>
-    public static string UrlCompleta(string? rutaRelativa) =>
-        string.IsNullOrWhiteSpace(rutaRelativa)
-            ? "producto_placeholder.png"
-            : rutaRelativa.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? rutaRelativa
-                : BaseUrl.TrimEnd('/') + rutaRelativa;
+    public static string UrlCompleta(string? rutaRelativa)
+    {
+        if (string.IsNullOrWhiteSpace(rutaRelativa)) return "producto_placeholder.png";
+        if (rutaRelativa.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return rutaRelativa;
+
+        var url = BaseUrl.TrimEnd('/') + rutaRelativa;
+        return rutaRelativa.StartsWith("/demo/", StringComparison.OrdinalIgnoreCase)
+            ? $"{url}?v={VersionFotosDemo}"
+            : url;
+    }
 }

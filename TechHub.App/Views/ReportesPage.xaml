@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             x:Class="TechHub.App.Views.ReportesPage"
+             x:DataType="vm:ReportesViewModel"
+             Title="Reportes">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20,16" Spacing="18">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Reportes" Style="{StaticResource Titulo}" />
+                <Label Text="Generá PDFs para descargar, compartir o enviar por email." Style="{StaticResource Secundario}" />
+            </VerticalStackLayout>
+
+            <!-- Destinatario -->
+            <VerticalStackLayout Spacing="6">
+                <Label Text="Enviar a" Style="{StaticResource Mini}" />
+                <Border Style="{StaticResource CampoBorde}">
+                    <Entry Text="{Binding EmailDestino}" Keyboard="Email" Placeholder="email@ejemplo.com" />
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- Inventario -->
+            <Border Style="{StaticResource Tarjeta}" Padding="18">
+                <VerticalStackLayout Spacing="12">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="Inventario valorizado" Style="{StaticResource Subtitulo}" />
+                        <Label Text="Stock actual, valor a precio de venta y productos para reponer."
+                               Style="{StaticResource Secundario}" />
+                    </VerticalStackLayout>
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <Button Text="Ver" Command="{Binding VerInventarioCommand}" />
+                        <Button Grid.Column="1" Text="Compartir" Command="{Binding CompartirInventarioCommand}" Style="{StaticResource BotonSecundario}" FontSize="13" Padding="4,0" />
+                        <Button Grid.Column="2" Text="Email" Command="{Binding EnviarInventarioCommand}" Style="{StaticResource BotonSecundario}" FontSize="13" Padding="4,0" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Ventas por período -->
+            <Border Style="{StaticResource Tarjeta}" Padding="18">
+                <VerticalStackLayout Spacing="12">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="Ventas por período" Style="{StaticResource Subtitulo}" />
+                        <Label Text="Pedidos cobrados, facturación, ticket promedio y más vendidos."
+                               Style="{StaticResource Secundario}" />
+                    </VerticalStackLayout>
+
+                    <HorizontalStackLayout Spacing="8">
+                        <Button Text="7 días" Command="{Binding PeriodoCommand}" CommandParameter="7" Style="{StaticResource BotonChico}" />
+                        <Button Text="30 días" Command="{Binding PeriodoCommand}" CommandParameter="30" Style="{StaticResource BotonChico}" />
+                        <Button Text="Este mes" Command="{Binding PeriodoCommand}" CommandParameter="mes" Style="{StaticResource BotonChico}" />
+                    </HorizontalStackLayout>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Desde" Style="{StaticResource Mini}" />
+                            <Border Style="{StaticResource CampoBorde}">
+                                <DatePicker Date="{Binding Desde}" Format="dd/MM/yyyy" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="Hasta" Style="{StaticResource Mini}" />
+                            <Border Style="{StaticResource CampoBorde}">
+                                <DatePicker Date="{Binding Hasta}" Format="dd/MM/yyyy" />
+                            </Border>
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <Button Text="Ver" Command="{Binding VerVentasCommand}" />
+                        <Button Grid.Column="1" Text="Compartir" Command="{Binding CompartirVentasCommand}" Style="{StaticResource BotonSecundario}" FontSize="13" Padding="4,0" />
+                        <Button Grid.Column="2" Text="Email" Command="{Binding EnviarVentasCommand}" Style="{StaticResource BotonSecundario}" FontSize="13" Padding="4,0" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
+
+            <Label Text="El envío por email usa la cuenta de Gmail configurada en el servidor (contraseña de aplicación)."
+                   Style="{StaticResource Mini}" HorizontalTextAlignment="Center" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

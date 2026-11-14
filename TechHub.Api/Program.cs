@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,12 @@ using TechHub.Api.Models;
 using TechHub.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configuración local con secretos (contraseña de Gmail, etc.). No se sube a GitHub.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
+// QuestPDF: licencia Community (gratuita para proyectos educativos y empresas chicas).
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 // ---------------- Base de datos (EF Core Code-First + SQL Server) ----------------
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -49,6 +56,19 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IMovimientoService, MovimientoService>();
 builder.Services.AddScoped<IImagenService, ImagenService>();
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
+builder.Services.AddScoped<IComprobanteService, ComprobanteService>();
+builder.Services.AddScoped<IReportesPdfService, ReportesPdfService>();
+builder.Services.AddScoped<INotificacionesService, NotificacionesService>();
+
+// Pagos por transferencia y emails (Gmail SMTP con contraseña de aplicación)
+builder.Services.Configure<PagosOptions>(builder.Configuration.GetSection("Pagos"));
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddSingleton(Channel.CreateBounded<EmailMensaje>(new BoundedChannelOptions(200)
+{
+    FullMode = BoundedChannelFullMode.DropWrite
+}));
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHostedService<EmailBackgroundService>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ManejadorErrores>();

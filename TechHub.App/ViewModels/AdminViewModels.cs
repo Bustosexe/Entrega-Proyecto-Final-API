@@ -22,6 +22,7 @@ public partial class PanelViewModel(ApiClient api, SesionService sesion) : BaseV
     [ObservableProperty] private string ventasHoy = "-";
     [ObservableProperty] private string facturacionMes = "-";
     [ObservableProperty] private string pendientes = "-";
+    [ObservableProperty] private string enRevision = "-";
     [ObservableProperty] private string unidades = "-";
     [ObservableProperty] private string productos = "-";
     [ObservableProperty] private string valorInventario = "-";
@@ -43,6 +44,7 @@ public partial class PanelViewModel(ApiClient api, SesionService sesion) : BaseV
         VentasHoy = r.VentasHoy == 1 ? "1 venta" : $"{r.VentasHoy} ventas";
         FacturacionMes = Formato.Moneda(r.FacturacionMes);
         Pendientes = r.PedidosPendientes.ToString();
+        EnRevision = r.PagosEnRevision.ToString();
         Unidades = r.UnidadesEnStock.ToString("N0", Formato.Cultura);
         Productos = $"{r.TotalProductos} productos activos";
         ValorInventario = Formato.Moneda(r.ValorInventario);
@@ -91,7 +93,7 @@ public partial class PedidosAdminViewModel(ApiClient api) : BaseViewModel
     private bool _hayMas;
 
     public ObservableCollection<PedidoDto> Pedidos { get; } = [];
-    public List<string> Estados { get; } = ["Todos", "Pendiente", "Confirmado", "Entregado", "Cancelado"];
+    public List<string> Estados { get; } = EstadosPedido.Filtros.Select(f => f.Texto).ToList();
 
     [ObservableProperty] private string estado = "Todos";
     [ObservableProperty] private string buscar = string.Empty;
@@ -118,7 +120,8 @@ public partial class PedidosAdminViewModel(ApiClient api) : BaseViewModel
     private Task CargarAsync(int pagina) => EjecutarAsync(async () =>
     {
         var url = $"api/pedidos?pagina={pagina}&tamanio=10";
-        if (Estado != "Todos") url += $"&estado={Estado}";
+        var codigoEstado = EstadosPedido.Filtros.FirstOrDefault(f => f.Texto == Estado).Codigo;
+        if (!string.IsNullOrEmpty(codigoEstado)) url += $"&estado={codigoEstado}";
         if (!string.IsNullOrWhiteSpace(Buscar)) url += $"&buscar={Uri.EscapeDataString(Buscar.Trim())}";
 
         var r = await api.GetAsync<PagedResult<PedidoDto>>(url);
@@ -264,7 +267,7 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
         }
         catch (Exception ex)
         {
-            await Dialogos.Alerta("Galería", $"No se pudo abrir la galería: {ex.Message}");
+            await Dialogos.Alerta("Galería", $"No se pudo abrir la galería: {ex.Message}", TipoAlerta.Error);
             return;
         }
         if (archivo is null) return;
@@ -272,7 +275,7 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
         var ext = Path.GetExtension(archivo.FileName).ToLowerInvariant();
         if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp"))
         {
-            await Dialogos.Alerta("Formato no permitido", "Elegí una imagen JPG, PNG o WEBP.");
+            await Dialogos.Advertencia("Formato no permitido", "Elegí una imagen JPG, PNG o WEBP.");
             return;
         }
 
@@ -293,7 +296,7 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
     private async Task QuitarFotoAsync()
     {
         if (_producto is null) return;
-        if (!await Dialogos.Confirmar("Quitar foto", "¿Eliminar la foto del producto?")) return;
+        if (!await Dialogos.Confirmar("Quitar foto", "¿Eliminar la foto del producto?", "Eliminar", "Cancelar", peligro: true)) return;
         await EjecutarAsync(async () =>
         {
             await api.DeleteAsync($"api/productos/{_producto.Id}/imagen");
@@ -308,17 +311,17 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
     {
         if (string.IsNullOrWhiteSpace(Nombre) || string.IsNullOrWhiteSpace(Marca) || Categoria is null)
         {
-            await Dialogos.Alerta("Datos incompletos", "Completá nombre, marca y categoría.");
+            await Dialogos.Advertencia("Datos incompletos", "Completá nombre, marca y categoría.");
             return;
         }
         if (!TryParseDecimal(Precio, out var precio) || precio < 0)
         {
-            await Dialogos.Alerta("Precio inválido", "Ingresá un precio válido. Ej: 850000 o 850000,50");
+            await Dialogos.Advertencia("Precio inválido", "Ingresá un precio válido. Ej: 850000 o 850000,50");
             return;
         }
         if (!int.TryParse(StockMinimo, out var minimo) || minimo < 0)
         {
-            await Dialogos.Alerta("Stock mínimo inválido", "Ingresá un número entero mayor o igual a 0.");
+            await Dialogos.Advertencia("Stock mínimo inválido", "Ingresá un número entero mayor o igual a 0.");
             return;
         }
 
@@ -356,7 +359,8 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
     {
         if (_producto is null) return;
         if (!await Dialogos.Confirmar("Dar de baja",
-                $"¿Dar de baja \"{_producto.Nombre}\"? Deja de mostrarse en el catálogo, pero se conserva su historial."))
+                $"¿Dar de baja \"{_producto.Nombre}\"? Deja de mostrarse en el catálogo, pero se conserva su historial.",
+                "Dar de baja", "Cancelar", peligro: true))
             return;
         if (await EjecutarAsync(() => api.DeleteAsync($"api/productos/{_producto.Id}")))
             await IrAsync("..");
@@ -471,17 +475,17 @@ public partial class IngresoFormViewModel(ApiClient api) : BaseViewModel
     {
         if (Producto is null || Proveedor is null)
         {
-            await Dialogos.Alerta("Datos incompletos", "Elegí el producto y el proveedor.");
+            await Dialogos.Advertencia("Datos incompletos", "Elegí el producto y el proveedor.");
             return;
         }
         if (!int.TryParse(Cantidad, out var cant) || cant <= 0)
         {
-            await Dialogos.Alerta("Cantidad inválida", "Ingresá una cantidad mayor a 0.");
+            await Dialogos.Advertencia("Cantidad inválida", "Ingresá una cantidad mayor a 0.");
             return;
         }
         if (!ProductoFormViewModel.TryParseDecimal(CostoUnitario, out var costo) || costo < 0)
         {
-            await Dialogos.Alerta("Costo inválido", "Ingresá el costo unitario. Ej: 700000");
+            await Dialogos.Advertencia("Costo inválido", "Ingresá el costo unitario. Ej: 700000");
             return;
         }
 
@@ -504,5 +508,70 @@ public partial class IngresoFormViewModel(ApiClient api) : BaseViewModel
             Dialogos.Aviso($"Stock actualizado: +{ingreso.Cantidad} de {ingreso.Producto}");
             await IrAsync("..");
         }
+    }
+}
+
+// =====================================================================
+// Reportes en PDF (descargar, compartir o enviar por email)
+// =====================================================================
+
+public partial class ReportesViewModel(ApiClient api, SesionService sesion) : BaseViewModel
+{
+    [ObservableProperty] private DateTime desde = DateTime.Today.AddDays(-29);
+    [ObservableProperty] private DateTime hasta = DateTime.Today;
+    [ObservableProperty] private string emailDestino = string.Empty;
+
+    public void AlAparecer()
+    {
+        Titulo = "Reportes";
+        if (string.IsNullOrWhiteSpace(EmailDestino))
+            EmailDestino = sesion.Usuario?.Email ?? string.Empty;
+    }
+
+    private string UrlVentas => $"api/reportes/ventas?desde={Desde:yyyy-MM-dd}&hasta={Hasta:yyyy-MM-dd}";
+
+    [RelayCommand]
+    private void Periodo(string dias)
+    {
+        Hasta = DateTime.Today;
+        Desde = dias == "mes"
+            ? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1)
+            : DateTime.Today.AddDays(-(int.Parse(dias) - 1));
+    }
+
+    [RelayCommand]
+    private Task VerInventarioAsync() => EjecutarAsync(async () =>
+        await Archivos.AbrirAsync(await api.DescargarAsync("api/reportes/inventario", "TechHub-Inventario.pdf")));
+
+    [RelayCommand]
+    private Task CompartirInventarioAsync() => EjecutarAsync(async () =>
+        await Archivos.CompartirAsync(await api.DescargarAsync("api/reportes/inventario", "TechHub-Inventario.pdf"), "Inventario valorizado"));
+
+    [RelayCommand]
+    private Task EnviarInventarioAsync() => EnviarAsync(new { tipo = "inventario", email = Destino() });
+
+    [RelayCommand]
+    private Task VerVentasAsync() => EjecutarAsync(async () =>
+        await Archivos.AbrirAsync(await api.DescargarAsync(UrlVentas, "TechHub-Ventas.pdf")));
+
+    [RelayCommand]
+    private Task CompartirVentasAsync() => EjecutarAsync(async () =>
+        await Archivos.CompartirAsync(await api.DescargarAsync(UrlVentas, "TechHub-Ventas.pdf"), "Reporte de ventas"));
+
+    [RelayCommand]
+    private Task EnviarVentasAsync() =>
+        EnviarAsync(new { tipo = "ventas", email = Destino(), desde = Desde.ToString("yyyy-MM-dd"), hasta = Hasta.ToString("yyyy-MM-dd") });
+
+    private string? Destino() => string.IsNullOrWhiteSpace(EmailDestino) ? null : EmailDestino.Trim();
+
+    private async Task EnviarAsync(object cuerpo)
+    {
+        if (Destino() is null)
+        {
+            await Dialogos.Advertencia("Email", "Escribí el email de destino.");
+            return;
+        }
+        if (await EjecutarAsync(() => api.PostAsync("api/reportes/enviar", cuerpo)))
+            Dialogos.Aviso($"Reporte enviado a {Destino()}.");
     }
 }

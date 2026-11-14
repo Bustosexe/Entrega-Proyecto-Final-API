@@ -4,32 +4,32 @@
              xmlns:vm="clr-namespace:TechHub.App.ViewModels"
              x:Class="TechHub.App.Views.LoginPage"
              x:DataType="vm:LoginViewModel"
-             Title="Ingresar">
+             Title="">
 
     <ScrollView>
-        <VerticalStackLayout Padding="24,36" Spacing="14">
-            <Image Source="logo.png" HeightRequest="80" />
-            <Label Text="Bienvenido a TechHub" Style="{StaticResource Titulo}" HorizontalTextAlignment="Center" />
-            <Label Text="Ingresá para comprar y seguir tus pedidos" Style="{StaticResource Secundario}"
-                   HorizontalTextAlignment="Center" Margin="0,-8,0,10" />
+        <VerticalStackLayout Padding="28,24" Spacing="10">
+            <Image Source="logo.png" HeightRequest="56" WidthRequest="56" HorizontalOptions="Start" />
+            <Label Text="Hola de nuevo" FontSize="32" FontAttributes="Bold" Margin="0,18,0,0" />
+            <Label Text="Ingresá para comprar y seguir tus pedidos." Style="{StaticResource Secundario}" FontSize="16" Margin="0,0,0,18" />
 
-            <Label Text="Email o usuario" Style="{StaticResource Rotulo}" />
+            <Label Text="Email o usuario" Style="{StaticResource Mini}" />
             <Border Style="{StaticResource CampoBorde}">
                 <Entry Text="{Binding Usuario}" Keyboard="Email" Placeholder="tu@email.com" ReturnType="Next" />
             </Border>
 
-            <Label Text="Contraseña" Style="{StaticResource Rotulo}" />
+            <Label Text="Contraseña" Style="{StaticResource Mini}" Margin="0,8,0,0" />
             <Border Style="{StaticResource CampoBorde}">
                 <Entry Text="{Binding Password}" IsPassword="True" Placeholder="••••••" ReturnType="Go"
                        ReturnCommand="{Binding IngresarCommand}" />
             </Border>
 
-            <Button Text="Ingresar" Command="{Binding IngresarCommand}" IsEnabled="{Binding NoEstaOcupado}" Margin="0,12,0,0" />
+            <Button Text="Ingresar" Command="{Binding IngresarCommand}" IsEnabled="{Binding NoEstaOcupado}" Margin="0,22,0,0" />
             <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
 
-            <BoxView HeightRequest="1" Color="{StaticResource Borde}" Margin="0,10" />
-            <Label Text="¿Todavía no tenés cuenta?" Style="{StaticResource Secundario}" HorizontalTextAlignment="Center" />
-            <Button Text="Crear cuenta" Style="{StaticResource BotonSecundario}" Command="{Binding IrARegistroCommand}" />
+            <HorizontalStackLayout HorizontalOptions="Center" Spacing="4" Margin="0,18,0,0">
+                <Label Text="¿No tenés cuenta?" Style="{StaticResource Secundario}" VerticalOptions="Center" />
+                <Button Text="Creala gratis" Command="{Binding IrARegistroCommand}" Style="{StaticResource BotonTexto}" Padding="4,0" />
+            </HorizontalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

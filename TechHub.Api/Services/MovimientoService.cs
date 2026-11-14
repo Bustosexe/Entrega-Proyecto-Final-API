@@ -143,7 +143,9 @@ public class MovimientoService(AppDbContext db) : IMovimientoService
 
         var actual = filas[0].Estado;
         if (!EstadosPedido.TransicionValida(actual, nuevoEstado))
-            throw new ReglaNegocioException($"No se puede pasar un pedido {actual} a {nuevoEstado}.", StatusCodes.Status409Conflict);
+            throw new ReglaNegocioException(
+                $"No se puede pasar un pedido de \"{EstadosPedido.Texto(actual)}\" a \"{EstadosPedido.Texto(nuevoEstado)}\".",
+                StatusCodes.Status409Conflict);
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 

@@ -12,10 +12,11 @@ public partial class CarritoPage : ContentPage
         BindingContext = _vm = vm;
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
         _vm.ActualizarTotales();
+        await _vm.CargarDatosPagoAsync();
     }
 
     private static CarritoItem? Item(object? sender) => (sender as BindableObject)?.BindingContext as CarritoItem;

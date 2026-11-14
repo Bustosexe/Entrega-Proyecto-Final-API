@@ -5,11 +5,11 @@ using TechHub.Api.Models;
 namespace TechHub.Api.Data;
 
 /// <summary>
-/// Datos de demostración para la presentación: proveedores, un catálogo de 16 componentes con imagen,
+/// Datos de demostración para la presentación: proveedores, un catálogo de 17 componentes con foto,
 /// sus compras iniciales (Ingresos) y un comprador de prueba con pedidos.
-/// Es idempotente: solo agrega los productos que todavía no existen (por nombre).
+/// Es idempotente: solo agrega los productos que todavía no existen (por nombre o por imagen).
 /// Se activa con "Seed:DatosDemo": true en appsettings.json.
-/// Los precios son orientativos (ARS) y las imágenes son ilustraciones genéricas en wwwroot/demo.
+/// Los precios son orientativos (ARS) y las fotos de producto están en wwwroot/demo.
 /// </summary>
 public static class DemoSeeder
 {
@@ -27,22 +27,24 @@ public static class DemoSeeder
         new("Intel Core i7-14700K", "Intel", "Procesadores", 620000, 485000, 2, 2, "core-i7-14700k",
             "20 núcleos (8P + 12E) / 28 hilos, hasta 5,6 GHz, desbloqueado para overclock, socket LGA1700."),
 
-        new("GeForce RTX 4060 8GB Dual", "ASUS", "Tarjetas Gráficas", 480000, 375000, 8, 2, "rtx4060",
+        new("GeForce RTX 4060 8GB Ventus 2X Black OC", "MSI", "Tarjetas Gráficas", 480000, 375000, 8, 2, "rtx4060",
             "8 GB GDDR6, DLSS 3 y Ray Tracing. Doble ventilador y bajo consumo (115 W)."),
-        new("GeForce RTX 4070 SUPER 12GB Ventus 3X", "MSI", "Tarjetas Gráficas", 980000, 770000, 3, 2, "rtx4070super",
-            "12 GB GDDR6X, DLSS 3 y Ray Tracing. Triple ventilador. Excelente para 1440p en ultra."),
-        new("Radeon RX 7800 XT 16GB Pulse", "Sapphire", "Tarjetas Gráficas", 850000, 665000, 0, 2, "rx7800xt",
+        new("GeForce RTX 4070 SUPER 12GB Gaming X Slim", "MSI", "Tarjetas Gráficas", 980000, 770000, 3, 2, "rtx4070super",
+            "12 GB GDDR6X, DLSS 3 y Ray Tracing. Triple ventilador en diseño delgado. Excelente para 1440p en ultra."),
+        new("GeForce RTX 5070 Ti 16GB TUF Gaming OC", "ASUS", "Tarjetas Gráficas", 1450000, 1130000, 3, 1, "rtx5070ti",
+            "16 GB GDDR7, PCIe 5.0, DLSS 4 y Ray Tracing. Triple ventilador y construcción reforzada TUF. Para 1440p y 4K."),
+        new("Radeon RX 7800 XT 16GB Phantom Gaming OC", "ASRock", "Tarjetas Gráficas", 850000, 665000, 0, 2, "rx7800xt",
             "16 GB GDDR6, FSR 3. Gran rendimiento en 1440p. (Sin stock: muestra el estado \"Sin stock\" en el catálogo)."),
 
-        new("B650 Gaming Plus WiFi", "MSI", "Motherboards", 290000, 225000, 6, 2, "b650-gaming",
-            "Socket AM5, chipset B650, DDR5, PCIe 4.0, 2 x M.2, WiFi 6E y Bluetooth. Formato ATX."),
+        new("B650M Gaming Plus WiFi", "Gigabyte", "Motherboards", 290000, 225000, 6, 2, "b650-gaming",
+            "Socket AM5, chipset B650, DDR5, PCIe 4.0, 2 x M.2, WiFi 6E y Bluetooth. Formato Micro-ATX."),
         new("TUF Gaming B760-Plus WiFi", "ASUS", "Motherboards", 260000, 200000, 5, 2, "b760-tuf",
             "Socket LGA1700, chipset B760, DDR5, PCIe 4.0, 3 x M.2, WiFi 6. Formato ATX."),
 
         new("Fury Beast DDR5 16GB (2x8) 6000MHz", "Kingston", "Memorias RAM", 95000, 72000, 20, 5, "fury-ddr5-16",
             "Kit dual channel 2 x 8 GB DDR5 6000 MHz CL36, perfiles Intel XMP 3.0 y AMD EXPO."),
-        new("Vengeance DDR5 32GB (2x16) 6000MHz", "Corsair", "Memorias RAM", 165000, 128000, 14, 4, "vengeance-ddr5-32",
-            "Kit dual channel 2 x 16 GB DDR5 6000 MHz CL30, disipador de aluminio, XMP 3.0."),
+        new("Vengeance RGB DDR5 32GB (2x16) 6000MHz Blanca", "Corsair", "Memorias RAM", 165000, 128000, 14, 4, "vengeance-ddr5-32",
+            "Kit dual channel 2 x 16 GB DDR5 6000 MHz CL30, disipador blanco con iluminación RGB, XMP 3.0."),
 
         new("SSD 990 PRO 1TB NVMe M.2", "Samsung", "Almacenamiento M.2", 165000, 128000, 9, 3, "990pro-1tb",
             "NVMe PCIe 4.0, hasta 7.450 MB/s de lectura. Formato M.2 2280."),
@@ -62,9 +64,14 @@ public static class DemoSeeder
         var admin = await db.Usuarios.Where(u => u.Rol == Roles.Admin).OrderBy(u => u.Id).FirstOrDefaultAsync();
         if (admin is null) return;
 
-        var existentes = (await db.Productos.Select(p => p.Nombre).ToListAsync())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var pendientes = Catalogo.Where(d => !existentes.Contains(d.Nombre)).ToList();
+        // Se considera que un producto de demo ya existe si coincide el nombre o la imagen
+        // (así, si se renombra un producto desde la app, no se vuelve a crear duplicado).
+        var actuales = await db.Productos.Select(p => new { p.Nombre, p.ImagenUrl }).ToListAsync();
+        var nombres = actuales.Select(p => p.Nombre).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var imagenes = actuales.Where(p => p.ImagenUrl != null).Select(p => p.ImagenUrl!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var pendientes = Catalogo
+            .Where(d => !nombres.Contains(d.Nombre) && !imagenes.Contains($"/demo/{d.Imagen}.png"))
+            .ToList();
         if (pendientes.Count == 0) return;
 
         // ---------- Proveedores ----------

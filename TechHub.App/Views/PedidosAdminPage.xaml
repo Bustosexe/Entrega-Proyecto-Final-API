@@ -37,7 +37,7 @@
                             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="3">
                                 <Label Text="{Binding Cliente}" FontAttributes="Bold" FontSize="15" LineBreakMode="TailTruncation" />
                                 <Border Grid.Column="1" Style="{StaticResource Etiqueta}" BackgroundColor="{Binding EstadoColor}">
-                                    <Label Text="{Binding Estado}" Style="{StaticResource TextoEtiqueta}" />
+                                    <Label Text="{Binding EstadoTexto}" Style="{StaticResource TextoEtiqueta}" />
                                 </Border>
                                 <Label Grid.Row="1" Text="{Binding Codigo}" Style="{StaticResource Secundario}" />
                                 <Label Grid.Row="1" Grid.Column="1" Text="{Binding FechaTexto}" Style="{StaticResource Secundario}" FontSize="12" />

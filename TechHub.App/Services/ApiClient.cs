@@ -54,6 +54,7 @@ public class ApiClient
         {
             ".png" => "image/png",
             ".webp" => "image/webp",
+            ".pdf" => "application/pdf",
             _ => "image/jpeg"
         };
 
@@ -65,6 +66,19 @@ public class ApiClient
         using var req = new HttpRequestMessage(HttpMethod.Post, url.TrimStart('/')) { Content = form };
         using var resp = await SendAsync(req, url);
         return await LeerAsync<T>(resp);
+    }
+
+    /// <summary>Descarga un archivo (PDF, comprobante) con el token de la sesión.</summary>
+    public async Task<ArchivoDescargado> DescargarAsync(string url, string nombrePorDefecto)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, url.TrimStart('/'));
+        using var resp = await SendAsync(req, url);
+        var bytes = await resp.Content.ReadAsByteArrayAsync();
+        var nombre = resp.Content.Headers.ContentDisposition?.FileNameStar
+                     ?? resp.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+                     ?? nombrePorDefecto;
+        var mime = resp.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        return new ArchivoDescargado(bytes, nombre, mime);
     }
 
     // ---------------------------------------------------------------------

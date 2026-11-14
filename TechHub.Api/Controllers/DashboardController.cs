@@ -23,7 +23,8 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var mesUtc = new DateTime(ahoraAr.Year, ahoraAr.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddHours(3);
 
         var activos = db.Productos.AsNoTracking().Where(p => p.Activo);
-        var ventas = db.Salidas.AsNoTracking().Where(s => s.Estado != EstadosPedido.Cancelado);
+        // Facturación = pedidos con pago confirmado o entregados.
+        var ventas = db.Salidas.AsNoTracking().Where(s => EstadosPedido.Cobrados.Contains(s.Estado));
 
         var resumen = new ResumenDto(
             TotalProductos: await activos.CountAsync(ct),
@@ -31,6 +32,8 @@ public class DashboardController(AppDbContext db) : ControllerBase
             UnidadesEnStock: await activos.SumAsync(p => p.Stock, ct),
             ValorInventario: await activos.SumAsync(p => p.Precio * p.Stock, ct),
             PedidosPendientes: await db.Salidas.Where(s => s.Estado == EstadosPedido.Pendiente)
+                .Select(s => s.CodigoPedido).Distinct().CountAsync(ct),
+            PagosEnRevision: await db.Salidas.Where(s => s.Estado == EstadosPedido.EnRevision)
                 .Select(s => s.CodigoPedido).Distinct().CountAsync(ct),
             VentasHoy: await ventas.Where(s => s.Fecha >= hoyUtc).Select(s => s.CodigoPedido).Distinct().CountAsync(ct),
             FacturacionHoy: await ventas.Where(s => s.Fecha >= hoyUtc).SumAsync(s => s.Total, ct),
@@ -41,7 +44,7 @@ public class DashboardController(AppDbContext db) : ControllerBase
         return Ok(resumen);
     }
 
-    /// <summary>Facturación y cantidad de pedidos por día (hora de Argentina), sin pedidos cancelados.</summary>
+    /// <summary>Facturación y cantidad de pedidos cobrados por día (hora de Argentina).</summary>
     [HttpGet("ventas-diarias")]
     public async Task<ActionResult<List<VentaDiaDto>>> VentasDiarias([FromQuery] int dias = 7, CancellationToken ct = default)
     {
@@ -51,7 +54,7 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var desdeUtc = desdeAr.AddHours(3);
 
         var filas = await db.Salidas.AsNoTracking()
-            .Where(s => s.Estado != EstadosPedido.Cancelado && s.Fecha >= desdeUtc)
+            .Where(s => EstadosPedido.Cobrados.Contains(s.Estado) && s.Fecha >= desdeUtc)
             .Select(s => new { s.Fecha, s.Total, s.CodigoPedido })
             .ToListAsync(ct);
 
@@ -70,14 +73,14 @@ public class DashboardController(AppDbContext db) : ControllerBase
         return Ok(resultado);
     }
 
-    /// <summary>Ranking de productos más vendidos (unidades), sin pedidos cancelados.</summary>
+    /// <summary>Ranking de productos más vendidos (unidades) en pedidos cobrados.</summary>
     [HttpGet("top-productos")]
     public async Task<ActionResult<List<TopProductoDto>>> TopProductos([FromQuery] int cantidad = 5, CancellationToken ct = default)
     {
         cantidad = Math.Clamp(cantidad, 1, 20);
 
         var ranking = await db.Salidas.AsNoTracking()
-            .Where(s => s.Estado != EstadosPedido.Cancelado)
+            .Where(s => EstadosPedido.Cobrados.Contains(s.Estado))
             .GroupBy(s => s.ProductoId)
             .Select(g => new { ProductoId = g.Key, Unidades = g.Sum(s => s.Cantidad), Total = g.Sum(s => s.Total) })
             .OrderByDescending(x => x.Unidades)

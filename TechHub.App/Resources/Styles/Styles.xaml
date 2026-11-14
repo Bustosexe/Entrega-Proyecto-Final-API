@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
+<!-- Estilo "Índigo": fondo gris muy claro, tarjetas y campos blancos con borde fino,
+     botones índigo redondeados y botones secundarios en índigo suave. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
@@ -10,24 +12,33 @@
 
     <Style TargetType="Label">
         <Setter Property="TextColor" Value="{StaticResource Texto}" />
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="15" />
     </Style>
 
-    <Style TargetType="Button">
+    <!-- Base de todos los botones (los estilos con nombre heredan de acá con BasedOn) -->
+    <Style x:Key="BotonBase" TargetType="Button">
         <Setter Property="BackgroundColor" Value="{StaticResource Primario}" />
         <Setter Property="TextColor" Value="White" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="FontSize" Value="15" />
-        <Setter Property="CornerRadius" Value="12" />
-        <Setter Property="HeightRequest" Value="48" />
-        <Setter Property="Padding" Value="16,0" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="HeightRequest" Value="52" />
+        <Setter Property="Padding" Value="20,0" />
+        <Setter Property="BorderWidth" Value="0" />
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
                     <VisualState x:Name="Normal" />
                     <VisualState x:Name="Disabled">
                         <VisualState.Setters>
-                            <Setter Property="BackgroundColor" Value="#94A3B8" />
+                            <Setter Property="BackgroundColor" Value="#E2E8F0" />
+                            <Setter Property="TextColor" Value="#94A3B8" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+                            <Setter Property="Opacity" Value="0.75" />
+                            <Setter Property="Scale" Value="0.98" />
                         </VisualState.Setters>
                     </VisualState>
                 </VisualStateGroup>
@@ -35,29 +46,37 @@
         </Setter>
     </Style>
 
+    <Style TargetType="Button" BasedOn="{StaticResource BotonBase}" />
+
     <Style TargetType="Entry">
         <Setter Property="TextColor" Value="{StaticResource Texto}" />
-        <Setter Property="PlaceholderColor" Value="#94A3B8" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource TextoTenue}" />
         <Setter Property="FontSize" Value="15" />
-        <Setter Property="HeightRequest" Value="48" />
+        <Setter Property="HeightRequest" Value="50" />
     </Style>
 
     <Style TargetType="Editor">
         <Setter Property="TextColor" Value="{StaticResource Texto}" />
-        <Setter Property="PlaceholderColor" Value="#94A3B8" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource TextoTenue}" />
         <Setter Property="FontSize" Value="15" />
     </Style>
 
     <Style TargetType="Picker">
         <Setter Property="TextColor" Value="{StaticResource Texto}" />
-        <Setter Property="TitleColor" Value="#94A3B8" />
+        <Setter Property="TitleColor" Value="{StaticResource TextoTenue}" />
+        <Setter Property="FontSize" Value="15" />
+    </Style>
+
+    <Style TargetType="DatePicker">
+        <Setter Property="TextColor" Value="{StaticResource Texto}" />
         <Setter Property="FontSize" Value="15" />
     </Style>
 
     <Style TargetType="SearchBar">
-        <Setter Property="BackgroundColor" Value="White" />
+        <Setter Property="BackgroundColor" Value="Transparent" />
         <Setter Property="TextColor" Value="{StaticResource Texto}" />
-        <Setter Property="PlaceholderColor" Value="#94A3B8" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource TextoTenue}" />
+        <Setter Property="CancelButtonColor" Value="{StaticResource TextoSecundario}" />
     </Style>
 
     <Style TargetType="ActivityIndicator">
@@ -69,38 +88,65 @@
     </Style>
 
     <Style TargetType="Switch">
-        <Setter Property="OnColor" Value="{StaticResource Acento}" />
-        <Setter Property="ThumbColor" Value="{StaticResource Primario}" />
+        <Setter Property="OnColor" Value="{StaticResource Primario}" />
+        <Setter Property="ThumbColor" Value="White" />
+    </Style>
+
+    <Style TargetType="ProgressBar">
+        <Setter Property="ProgressColor" Value="{StaticResource Primario}" />
     </Style>
 
     <Style TargetType="Shell" ApplyToDerivedTypes="True">
-        <Setter Property="Shell.BackgroundColor" Value="{StaticResource Oscuro}" />
-        <Setter Property="Shell.ForegroundColor" Value="White" />
-        <Setter Property="Shell.TitleColor" Value="White" />
+        <Setter Property="Shell.BackgroundColor" Value="White" />
+        <Setter Property="Shell.ForegroundColor" Value="{StaticResource Texto}" />
+        <Setter Property="Shell.TitleColor" Value="{StaticResource Texto}" />
         <Setter Property="Shell.NavBarHasShadow" Value="False" />
         <Setter Property="Shell.TabBarBackgroundColor" Value="White" />
         <Setter Property="Shell.TabBarForegroundColor" Value="{StaticResource Primario}" />
         <Setter Property="Shell.TabBarTitleColor" Value="{StaticResource Primario}" />
-        <Setter Property="Shell.TabBarUnselectedColor" Value="#94A3B8" />
+        <Setter Property="Shell.TabBarUnselectedColor" Value="{StaticResource TextoTenue}" />
     </Style>
 
-    <!-- ===== Estilos con nombre ===== -->
+    <!-- ===== Contenedores ===== -->
 
     <Style x:Key="Tarjeta" TargetType="Border">
         <Setter Property="BackgroundColor" Value="White" />
         <Setter Property="Stroke" Value="{StaticResource Borde}" />
         <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 20" />
+        <Setter Property="Padding" Value="16" />
+    </Style>
+
+    <!-- Caja gris clara para imágenes de producto -->
+    <Style x:Key="CajaImagen" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="White" />
+        <Setter Property="Stroke" Value="{StaticResource Borde}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 16" />
+        <Setter Property="Padding" Value="10" />
+    </Style>
+
+    <Style x:Key="CampoBorde" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="White" />
+        <Setter Property="Stroke" Value="{StaticResource Borde}" />
+        <Setter Property="StrokeThickness" Value="1" />
         <Setter Property="StrokeShape" Value="RoundRectangle 14" />
-        <Setter Property="Padding" Value="14" />
+        <Setter Property="Padding" Value="12,0" />
     </Style>
 
     <Style x:Key="Etiqueta" TargetType="Border">
         <Setter Property="StrokeThickness" Value="0" />
-        <Setter Property="StrokeShape" Value="RoundRectangle 10" />
-        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 20" />
+        <Setter Property="Padding" Value="10,4" />
         <Setter Property="HorizontalOptions" Value="Start" />
         <Setter Property="VerticalOptions" Value="Center" />
     </Style>
+
+    <Style x:Key="FilaDato" TargetType="Grid">
+        <Setter Property="ColumnSpacing" Value="12" />
+    </Style>
+
+    <!-- ===== Textos ===== -->
 
     <Style x:Key="TextoEtiqueta" TargetType="Label">
         <Setter Property="TextColor" Value="White" />
@@ -109,70 +155,83 @@
     </Style>
 
     <Style x:Key="Titulo" TargetType="Label">
-        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontSize" Value="26" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="TextColor" Value="{StaticResource Oscuro}" />
+        <Setter Property="TextColor" Value="{StaticResource Texto}" />
     </Style>
 
     <Style x:Key="Subtitulo" TargetType="Label">
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontSize" Value="17" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="TextColor" Value="{StaticResource Oscuro}" />
+        <Setter Property="TextColor" Value="{StaticResource Texto}" />
     </Style>
 
     <Style x:Key="Secundario" TargetType="Label">
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextColor" Value="{StaticResource TextoSecundario}" />
+    </Style>
+
+    <Style x:Key="Mini" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="TextColor" Value="{StaticResource TextoSecundario}" />
     </Style>
 
     <Style x:Key="Rotulo" TargetType="Label">
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="11" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="TextColor" Value="{StaticResource TextoSecundario}" />
-        <Setter Property="Margin" Value="0,8,0,0" />
+        <Setter Property="TextTransform" Value="Uppercase" />
+        <Setter Property="CharacterSpacing" Value="1" />
+        <Setter Property="Margin" Value="0,10,0,0" />
     </Style>
 
     <Style x:Key="Precio" TargetType="Label">
         <Setter Property="FontSize" Value="17" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="TextColor" Value="{StaticResource Oscuro}" />
+        <Setter Property="TextColor" Value="{StaticResource Primario}" />
     </Style>
 
     <Style x:Key="KpiValor" TargetType="Label">
-        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontSize" Value="21" />
         <Setter Property="FontAttributes" Value="Bold" />
-        <Setter Property="TextColor" Value="{StaticResource Oscuro}" />
+        <Setter Property="TextColor" Value="{StaticResource Texto}" />
     </Style>
 
-    <Style x:Key="BotonSecundario" TargetType="Button">
-        <Setter Property="BackgroundColor" Value="White" />
+    <!-- ===== Botones ===== -->
+
+    <Style x:Key="BotonSecundario" TargetType="Button" BasedOn="{StaticResource BotonBase}">
+        <Setter Property="BackgroundColor" Value="{StaticResource PrimarioSuave}" />
         <Setter Property="TextColor" Value="{StaticResource Primario}" />
-        <Setter Property="BorderColor" Value="{StaticResource Primario}" />
-        <Setter Property="BorderWidth" Value="1.5" />
     </Style>
 
-    <Style x:Key="BotonPeligro" TargetType="Button">
-        <Setter Property="BackgroundColor" Value="White" />
+    <Style x:Key="BotonPeligro" TargetType="Button" BasedOn="{StaticResource BotonBase}">
+        <Setter Property="BackgroundColor" Value="{StaticResource PeligroSuave}" />
         <Setter Property="TextColor" Value="{StaticResource Peligro}" />
-        <Setter Property="BorderColor" Value="{StaticResource Peligro}" />
-        <Setter Property="BorderWidth" Value="1.5" />
     </Style>
 
-    <Style x:Key="BotonCircular" TargetType="Button">
-        <Setter Property="BackgroundColor" Value="{StaticResource Fondo}" />
-        <Setter Property="TextColor" Value="{StaticResource Oscuro}" />
+    <Style x:Key="BotonTexto" TargetType="Button" BasedOn="{StaticResource BotonBase}">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="TextColor" Value="{StaticResource Primario}" />
+        <Setter Property="HeightRequest" Value="44" />
+    </Style>
+
+    <Style x:Key="BotonChico" TargetType="Button" BasedOn="{StaticResource BotonBase}">
+        <Setter Property="BackgroundColor" Value="{StaticResource PrimarioSuave}" />
+        <Setter Property="TextColor" Value="{StaticResource Primario}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HeightRequest" Value="34" />
+        <Setter Property="CornerRadius" Value="17" />
+        <Setter Property="Padding" Value="14,0" />
+    </Style>
+
+    <Style x:Key="BotonCircular" TargetType="Button" BasedOn="{StaticResource BotonBase}">
+        <Setter Property="BackgroundColor" Value="{StaticResource PrimarioSuave}" />
+        <Setter Property="TextColor" Value="{StaticResource Primario}" />
         <Setter Property="FontSize" Value="18" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="WidthRequest" Value="38" />
-        <Setter Property="HeightRequest" Value="38" />
-        <Setter Property="CornerRadius" Value="19" />
-    </Style>
-
-    <Style x:Key="CampoBorde" TargetType="Border">
-        <Setter Property="BackgroundColor" Value="White" />
-        <Setter Property="Stroke" Value="{StaticResource Borde}" />
-        <Setter Property="StrokeShape" Value="RoundRectangle 10" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="WidthRequest" Value="40" />
+        <Setter Property="HeightRequest" Value="40" />
+        <Setter Property="CornerRadius" Value="20" />
     </Style>
 
 </ResourceDictionary>

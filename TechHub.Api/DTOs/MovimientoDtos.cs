@@ -65,6 +65,7 @@ public record PedidoDto(
     string Codigo,
     DateTime Fecha,
     string Estado,
+    string EstadoTexto,
     int ClienteId,
     string Cliente,
     string? ClienteTelefono,
@@ -72,7 +73,34 @@ public record PedidoDto(
     decimal Total,
     int Unidades,
     string? Observaciones,
+    bool TieneComprobante,
+    DateTime? ComprobanteFecha,
+    string? MotivoRechazo,
     IReadOnlyList<PedidoItemDto> Items);
+
+public class RechazarPagoRequest
+{
+    [Required(ErrorMessage = "Indicá el motivo del rechazo."), StringLength(300)]
+    public string Motivo { get; set; } = string.Empty;
+}
+
+/// <summary>Datos de la cuenta para transferir (se muestran en el carrito y en el pedido).</summary>
+public record DatosTransferenciaDto(string Alias, string Cbu, string Titular, string Cuit, string Banco, int HorasReserva);
+
+/// <summary>Envío de un reporte por email. Tipo: pedido | inventario | ventas.</summary>
+public class EnviarReporteRequest
+{
+    [Required, RegularExpression("^(pedido|inventario|ventas)$", ErrorMessage = "Tipo inválido: pedido, inventario o ventas.")]
+    public string Tipo { get; set; } = string.Empty;
+
+    /// <summary>Destinatario. Si se omite, se usa el email del usuario logueado.</summary>
+    [EmailAddress(ErrorMessage = "Email inválido."), StringLength(150)]
+    public string? Email { get; set; }
+
+    public string? Codigo { get; set; }
+    public DateTime? Desde { get; set; }
+    public DateTime? Hasta { get; set; }
+}
 
 public class PedidoItemRequest
 {
@@ -104,7 +132,7 @@ public class CambiarEstadoRequest
 
 public class PedidoQuery : PaginacionQuery
 {
-    /// <summary>Pendiente | Confirmado | Entregado | Cancelado</summary>
+    /// <summary>Pendiente | EnRevision | Confirmado | Entregado | Cancelado</summary>
     public string? Estado { get; set; }
     public int? ClienteId { get; set; }
 }
@@ -117,6 +145,7 @@ public record ResumenDto(
     int UnidadesEnStock,
     decimal ValorInventario,
     int PedidosPendientes,
+    int PagosEnRevision,
     int VentasHoy,
     decimal FacturacionHoy,
     decimal FacturacionMes,

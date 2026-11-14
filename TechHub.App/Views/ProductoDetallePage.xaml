@@ -8,20 +8,20 @@
              Title="{Binding Titulo}">
 
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Carrito" IconImageSource="ic_carrito_blanco.png" Command="{Binding IrAlCarritoCommand}" />
+        <ToolbarItem Text="Carrito" IconImageSource="ic_carrito.png" Command="{Binding IrAlCarritoCommand}" />
     </ContentPage.ToolbarItems>
 
     <Grid RowDefinitions="*,Auto">
         <ScrollView>
             <VerticalStackLayout Spacing="0">
-                <Border BackgroundColor="White" StrokeThickness="0" Padding="20">
-                    <Image Source="{Binding Producto.ImagenCompleta}" HeightRequest="250" Aspect="AspectFit" />
+                <Border Style="{StaticResource CajaImagen}" Margin="20,8,20,0" Padding="24">
+                    <Image Source="{Binding Producto.ImagenCompleta}" HeightRequest="240" Aspect="AspectFit" />
                 </Border>
 
-                <VerticalStackLayout Padding="18" Spacing="8">
+                <VerticalStackLayout Padding="20,18" Spacing="8">
                     <Label Text="{Binding Producto.MarcaCategoria}" Style="{StaticResource Secundario}" />
                     <Label Text="{Binding Producto.Nombre}" Style="{StaticResource Titulo}" />
-                    <Label Text="{Binding Producto.PrecioTexto}" FontSize="26" FontAttributes="Bold" TextColor="{StaticResource Primario}" />
+                    <Label Text="{Binding Producto.PrecioTexto}" FontSize="28" FontAttributes="Bold" />
 
                     <Border Style="{StaticResource Etiqueta}" BackgroundColor="{Binding Producto.StockColor}">
                         <Label Text="{Binding Producto.StockTexto}" Style="{StaticResource TextoEtiqueta}" FontSize="12" />
@@ -58,7 +58,8 @@
         </ScrollView>
 
         <!-- Barra inferior: cantidad + agregar -->
-        <Border Grid.Row="1" BackgroundColor="White" Stroke="{StaticResource Borde}" StrokeThickness="1" Padding="16,12">
+        <Border Grid.Row="1" BackgroundColor="White" Stroke="{StaticResource Borde}" StrokeThickness="1"
+                StrokeShape="RoundRectangle 24,24,0,0" Padding="20,14">
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
                 <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
                     <Button Text="−" Style="{StaticResource BotonCircular}" Command="{Binding RestarCommand}" />

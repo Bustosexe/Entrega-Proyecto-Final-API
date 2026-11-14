@@ -38,3 +38,9 @@ Thumbs.db
 *.jks
 *.apk
 *.aab
+
+## Configuración local con secretos (contraseña de Gmail)
+appsettings.Local.json
+
+## Comprobantes de pago subidos por los compradores (privados)
+TechHub.Api/App_Data/

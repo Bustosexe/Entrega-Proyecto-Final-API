@@ -17,6 +17,9 @@
                 </Grid>
             </Border>
 
+            <Label Text="Reportes" Style="{StaticResource Rotulo}" />
+            <Button Text="Reportes en PDF" Clicked="OnReportes" />
+
             <Label Text="Gestión" Style="{StaticResource Rotulo}" />
             <Button Text="Categorías" Style="{StaticResource BotonSecundario}" Clicked="OnCategorias" />
             <Button Text="Proveedores" Style="{StaticResource BotonSecundario}" Clicked="OnProveedores" />

@@ -311,7 +311,7 @@ public partial class AbmFormViewModel(ApiClient api) : BaseViewModel, IQueryAttr
         var faltantes = Campos.Where(c => c.Requerido && c.EsTexto && string.IsNullOrWhiteSpace(c.Valor)).Select(c => c.Etiqueta).ToList();
         if (faltantes.Count > 0)
         {
-            await Dialogos.Alerta("Datos incompletos", "Completá: " + string.Join(", ", faltantes) + ".");
+            await Dialogos.Advertencia("Datos incompletos", "Completá: " + string.Join(", ", faltantes) + ".");
             return;
         }
 
@@ -338,7 +338,7 @@ public partial class AbmFormViewModel(ApiClient api) : BaseViewModel, IQueryAttr
     private async Task BorrarAsync()
     {
         if (_def is null || _item is null) return;
-        if (!await Dialogos.Confirmar(_def.TextoBorrar, $"¿{_def.TextoBorrar} \"{_item.Titulo}\"? El historial se conserva."))
+        if (!await Dialogos.Confirmar(_def.TextoBorrar, $"¿{_def.TextoBorrar} \"{_item.Titulo}\"? El historial se conserva.", _def.TextoBorrar, "Cancelar", peligro: true))
             return;
         if (await EjecutarAsync(() => api.DeleteAsync($"{_def.Endpoint}/{_item.Id}")))
             await IrAsync("..");

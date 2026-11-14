@@ -16,6 +16,16 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
+#if ANDROID
+        // Estilo minimalista: sin la línea inferior nativa de Android en los campos de texto.
+        void SinLinea(Android.Views.View vista) =>
+            vista.BackgroundTintList = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+        Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("SinLinea", (h, _) => SinLinea(h.PlatformView));
+        Microsoft.Maui.Handlers.EditorHandler.Mapper.AppendToMapping("SinLinea", (h, _) => SinLinea(h.PlatformView));
+        Microsoft.Maui.Handlers.PickerHandler.Mapper.AppendToMapping("SinLinea", (h, _) => SinLinea(h.PlatformView));
+        Microsoft.Maui.Handlers.DatePickerHandler.Mapper.AppendToMapping("SinLinea", (h, _) => SinLinea(h.PlatformView));
+#endif
+
         // Servicios (una instancia para toda la app)
         builder.Services.AddSingleton<SesionService>();
         builder.Services.AddSingleton<CarritoService>();
@@ -40,6 +50,7 @@ public static class MauiProgram
         builder.Services.AddTransient<IngresosPage>().AddTransient<IngresosViewModel>();
         builder.Services.AddTransient<IngresoFormPage>().AddTransient<IngresoFormViewModel>();
         builder.Services.AddTransient<MasPage>();
+        builder.Services.AddTransient<ReportesPage>().AddTransient<ReportesViewModel>();
         builder.Services.AddTransient<AbmListaPage>().AddTransient<AbmListaViewModel>();
         builder.Services.AddTransient<AbmFormPage>().AddTransient<AbmFormViewModel>();
 

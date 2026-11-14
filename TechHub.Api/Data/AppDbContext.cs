@@ -126,6 +126,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.PrecioUnitario).HasPrecision(18, 2);
             e.Property(x => x.Total).HasPrecision(18, 2);
             e.Property(x => x.Observaciones).HasMaxLength(500);
+            e.Property(x => x.ComprobanteArchivo).HasMaxLength(200);
+            e.Property(x => x.MotivoRechazo).HasMaxLength(300);
             e.HasIndex(x => x.Fecha);
             e.HasIndex(x => x.CodigoPedido);
             e.HasIndex(x => x.Estado);
