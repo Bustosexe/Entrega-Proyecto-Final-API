@@ -9,12 +9,14 @@ namespace TechHub.App.Config;
 public static class ApiConfig
 {
     /// <summary>true = API local (emulador). false = API publicada en MonsterASP.</summary>
-    public const bool UsarServidorLocal = true;
+    public const bool UsarServidorLocal = false;
 
     public const string UrlLocal = "http://10.0.2.2:5180";
 
-    // TODO: reemplazar por la URL que te da el panel de MonsterASP.
-    public const string UrlProduccion = "https://techhub.runasp.net";
+    // URL del sitio en MonsterASP.
+    // En el plan gratuito HTTPS se activa pidiéndolo a soporte; hasta entonces se usa http://
+    // (permitido solo para este dominio en Platforms/Android/Resources/xml/network_security_config.xml).
+    public const string UrlProduccion = "http://apiintegrador.runasp.net";
 
     public static string BaseUrl => UsarServidorLocal ? UrlLocal : UrlProduccion;
 

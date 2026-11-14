@@ -112,7 +112,18 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Crea/actualiza la base aplicando las migraciones y genera el admin inicial.
-await DbSeeder.InicializarAsync(app.Services);
+// Si la base no responde (por ejemplo, una cadena de conexión mal escrita en el hosting),
+// la API igual arranca y el problema se puede ver en GET /api/estado, en vez de un error 500.30 sin detalle.
+string? errorInicio = null;
+try
+{
+    await DbSeeder.InicializarAsync(app.Services);
+}
+catch (Exception ex)
+{
+    errorInicio = ex.GetBaseException().Message;
+    app.Logger.LogCritical(ex, "No se pudo inicializar la base de datos.");
+}
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -141,6 +152,31 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Estado del servicio: sirve para comprobar el despliegue (API + conexión a la base de datos).
+app.MapGet("/api/estado", async (AppDbContext db) =>
+{
+    bool conecta;
+    string? detalle = errorInicio;
+    try
+    {
+        conecta = await db.Database.CanConnectAsync();
+    }
+    catch (Exception ex)
+    {
+        conecta = false;
+        detalle ??= ex.GetBaseException().Message;
+    }
+
+    var ok = conecta && errorInicio is null;
+    return Results.Json(new
+    {
+        api = "funcionando",
+        entorno = app.Environment.EnvironmentName,
+        baseDeDatos = ok ? "conectada" : "con problemas",
+        detalle = ok ? null : detalle ?? "No se pudo conectar con la base de datos. Revisá la cadena de conexión."
+    }, statusCode: ok ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable);
+}).WithTags("Estado").AllowAnonymous();
 
 // La raíz del sitio muestra la documentación de la API.
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();

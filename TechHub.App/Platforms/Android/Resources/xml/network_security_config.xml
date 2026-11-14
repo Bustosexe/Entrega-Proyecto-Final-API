@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Permite HTTP sin cifrar SOLO hacia la PC de desarrollo (emulador). Todo lo demás exige HTTPS. -->
+<!--
+  HTTP sin cifrar permitido SOLO hacia:
+    - la PC de desarrollo (emulador: 10.0.2.2 / localhost);
+    - apiintegrador.runasp.net, mientras MonsterASP no tenga activado HTTPS en el plan gratuito.
+  Cuando el sitio tenga HTTPS, quitar ese dominio de esta lista y usar https:// en ApiConfig.UrlProduccion.
+  Todo lo demás exige HTTPS.
+-->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">10.0.2.2</domain>
         <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">apiintegrador.runasp.net</domain>
     </domain-config>
 </network-security-config>

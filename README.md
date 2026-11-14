@@ -12,6 +12,10 @@ TechHub.App  (app Android, .NET MAUI)  ──HTTP + JWT──►  TechHub.Api  (
 | `TechHub.Api` | ASP.NET Core 10, EF Core 10 (Code-First), SQL Server, JWT, Swagger | Lógica de negocio, seguridad, stock, pedidos e imágenes |
 | `TechHub.App` | .NET MAUI 10 (Android), MVVM con CommunityToolkit.Mvvm | App móvil con tres perfiles: visitante, comprador y administrador |
 
+**API publicada:** <http://apiintegrador.runasp.net/swagger> (estado del servicio: `/api/estado`).
+
+**Documentación:** [Diagrama Entidad-Relación](docs/DER_TechHub.png) · [Casos de uso (diagrama y especificación)](docs/CasosDeUso.md)
+
 ## Perfiles de la app
 
 | Perfil | Login | Qué puede hacer |
