@@ -11,5 +11,5 @@ public class Proveedor
     public string? Direccion { get; set; }
     public bool Activo { get; set; } = true;
 
-    public ICollection<Ingreso> Ingresos { get; set; } = new List<Ingreso>();
+    public ICollection<Compra> Compras { get; set; } = new List<Compra>();
 }

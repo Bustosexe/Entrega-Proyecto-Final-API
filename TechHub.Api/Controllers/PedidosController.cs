@@ -10,7 +10,7 @@ using TechHub.Api.Services;
 namespace TechHub.Api.Controllers;
 
 /// <summary>
-/// Pedidos = Salidas agrupadas por CodigoPedido.
+/// Pedidos (cabecera) con sus renglones (DetallesPedido) y su historial de estados (HistorialPedidos).
 /// Flujo de pago por transferencia: el comprador confirma el carrito (Pendiente, stock reservado),
 /// transfiere y sube el comprobante (EnRevision); el admin lo verifica y confirma el pago (Confirmado)
 /// o lo rechaza (vuelve a Pendiente); finalmente lo marca como Entregado.
@@ -56,7 +56,7 @@ public class PedidosController(
         var codigo = await movimientos.RegistrarPedidoAsync(
             clienteId, usuarioId, req.Items.Select(i => (i.ProductoId, i.Cantidad)), estado, req.Observaciones?.Trim(), ct);
 
-        var pedido = (await ObtenerPedidoAsync(codigo, ct))!;
+        var pedido = (await db.ObtenerPedidoAsync(codigo, ct))!;
         if (!esAdmin)
         {
             var cliente = await DatosClienteAsync(clienteId, ct);
@@ -84,7 +84,7 @@ public class PedidosController(
     [HttpGet("{codigo}")]
     public async Task<ActionResult<PedidoDto>> Obtener(string codigo, CancellationToken ct)
     {
-        var pedido = await ObtenerPedidoAsync(codigo, ct);
+        var pedido = await db.ObtenerPedidoAsync(codigo, ct);
         if (pedido is null) return NotFound();
         if (!await PuedeVerAsync(pedido.ClienteId, ct)) return Forbid();
         return Ok(pedido);
@@ -100,26 +100,23 @@ public class PedidosController(
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<ActionResult<PedidoDto>> SubirComprobante(string codigo, IFormFile archivo, CancellationToken ct)
     {
-        var clienteId = await ClienteDelUsuarioAsync(User.ObtenerUsuarioId(), ct);
-        var filas = await db.Salidas.Where(s => s.CodigoPedido == codigo).ToListAsync(ct);
-        if (filas.Count == 0) return NotFound();
-        if (filas[0].ClienteId != clienteId) return Forbid();
-        if (filas[0].Estado != EstadosPedido.Pendiente)
+        var usuarioId = User.ObtenerUsuarioId();
+        var clienteId = await ClienteDelUsuarioAsync(usuarioId, ct);
+        var pedido = await db.Pedidos.FirstOrDefaultAsync(p => p.Codigo == codigo, ct);
+        if (pedido is null) return NotFound();
+        if (pedido.ClienteId != clienteId) return Forbid();
+        if (pedido.EstadoId != EstadosPedido.PendienteId)
             return Conflict(new ProblemDetails { Status = 409, Title = "No se puede subir", Detail = "Solo se puede subir el comprobante de un pedido que espera el pago." });
 
-        var anterior = filas[0].ComprobanteArchivo;
+        var anterior = pedido.ComprobanteArchivo;
         var archivoGuardado = await comprobantes.GuardarAsync(codigo, archivo, ct);
-        foreach (var f in filas)
-        {
-            f.ComprobanteArchivo = archivoGuardado;
-            f.ComprobanteFecha = DateTime.UtcNow;
-            f.MotivoRechazo = null;
-            f.Estado = EstadosPedido.EnRevision;
-        }
-        await db.SaveChangesAsync(ct);
+        pedido.ComprobanteArchivo = archivoGuardado;
+
+        // Guarda el archivo y pasa a "Pago en revisión" (queda en el historial).
+        await movimientos.CambiarEstadoAsync(codigo, EstadosPedido.EnRevision, usuarioId, null, ct);
         if (anterior != archivoGuardado) comprobantes.Eliminar(anterior);
 
-        return Ok(await ObtenerPedidoAsync(codigo, ct));
+        return Ok(await db.ObtenerPedidoAsync(codigo, ct));
     }
 
     /// <summary>Descarga el comprobante de pago. Solo el dueño del pedido o un administrador.</summary>
@@ -127,9 +124,9 @@ public class PedidosController(
     [Produces("application/octet-stream")]
     public async Task<IActionResult> VerComprobante(string codigo, CancellationToken ct)
     {
-        var info = await db.Salidas.AsNoTracking()
-            .Where(s => s.CodigoPedido == codigo)
-            .Select(s => new { s.ClienteId, s.ComprobanteArchivo })
+        var info = await db.Pedidos.AsNoTracking()
+            .Where(p => p.Codigo == codigo)
+            .Select(p => new { p.ClienteId, p.ComprobanteArchivo })
             .FirstOrDefaultAsync(ct);
         if (info is null) return NotFound();
         if (!await PuedeVerAsync(info.ClienteId, ct)) return Forbid();
@@ -149,8 +146,8 @@ public class PedidosController(
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<PedidoDto>> CambiarEstado(string codigo, CambiarEstadoRequest req, CancellationToken ct)
     {
-        await movimientos.CambiarEstadoAsync(codigo, req.Estado, ct);
-        var pedido = (await ObtenerPedidoAsync(codigo, ct))!;
+        await movimientos.CambiarEstadoAsync(codigo, req.Estado, User.ObtenerUsuarioId(), req.Comentario, ct);
+        var pedido = (await db.ObtenerPedidoAsync(codigo, ct))!;
 
         if (req.Estado == EstadosPedido.Confirmado)
         {
@@ -165,18 +162,14 @@ public class PedidosController(
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<PedidoDto>> RechazarPago(string codigo, RechazarPagoRequest req, CancellationToken ct)
     {
-        var filas = await db.Salidas.Where(s => s.CodigoPedido == codigo).ToListAsync(ct);
-        if (filas.Count == 0) return NotFound();
-        if (filas[0].Estado != EstadosPedido.EnRevision)
+        var estadoId = await db.Pedidos.Where(p => p.Codigo == codigo).Select(p => (int?)p.EstadoId).FirstOrDefaultAsync(ct);
+        if (estadoId is null) return NotFound();
+        if (estadoId != EstadosPedido.EnRevisionId)
             return Conflict(new ProblemDetails { Status = 409, Title = "No se puede rechazar", Detail = "Solo se puede rechazar un pago en revisión." });
 
-        foreach (var f in filas)
-        {
-            f.Estado = EstadosPedido.Pendiente;
-            f.MotivoRechazo = req.Motivo.Trim();
-        }
-        await db.SaveChangesAsync(ct);
-        return Ok(await ObtenerPedidoAsync(codigo, ct));
+        // El motivo queda en el historial y el comprador lo ve en el detalle del pedido.
+        await movimientos.CambiarEstadoAsync(codigo, EstadosPedido.Pendiente, User.ObtenerUsuarioId(), req.Motivo, ct);
+        return Ok(await db.ObtenerPedidoAsync(codigo, ct));
     }
 
     /// <summary>El comprador puede cancelar su pedido mientras no esté confirmado. El stock vuelve a estar disponible.</summary>
@@ -184,19 +177,20 @@ public class PedidosController(
     [Authorize(Roles = Roles.Comprador)]
     public async Task<ActionResult<PedidoDto>> Cancelar(string codigo, CancellationToken ct)
     {
-        var clienteId = await ClienteDelUsuarioAsync(User.ObtenerUsuarioId(), ct);
-        var info = await db.Salidas.AsNoTracking()
-            .Where(s => s.CodigoPedido == codigo)
-            .Select(s => new { s.ClienteId, s.Estado })
+        var usuarioId = User.ObtenerUsuarioId();
+        var clienteId = await ClienteDelUsuarioAsync(usuarioId, ct);
+        var info = await db.Pedidos.AsNoTracking()
+            .Where(p => p.Codigo == codigo)
+            .Select(p => new { p.ClienteId, p.EstadoId })
             .FirstOrDefaultAsync(ct);
 
         if (info is null) return NotFound();
         if (info.ClienteId != clienteId) return Forbid();
-        if (info.Estado is not (EstadosPedido.Pendiente or EstadosPedido.EnRevision))
+        if (info.EstadoId is not (EstadosPedido.PendienteId or EstadosPedido.EnRevisionId))
             return Conflict(new ProblemDetails { Status = 409, Title = "No se puede cancelar", Detail = "El pago ya fue confirmado. Comunicate con la tienda." });
 
-        await movimientos.CambiarEstadoAsync(codigo, EstadosPedido.Cancelado, ct);
-        return Ok(await ObtenerPedidoAsync(codigo, ct));
+        await movimientos.CambiarEstadoAsync(codigo, EstadosPedido.Cancelado, usuarioId, "Cancelado por el comprador", ct);
+        return Ok(await db.ObtenerPedidoAsync(codigo, ct));
     }
 
     // ---------------------------------------------------------------------
@@ -227,74 +221,33 @@ public class PedidosController(
         return clienteId ?? throw new ReglaNegocioException("La cuenta no tiene una ficha de cliente asociada.", StatusCodes.Status403Forbidden);
     }
 
-    /// <summary>Pagina por pedido (no por fila): primero obtiene los códigos de la página y después sus productos.</summary>
+    /// <summary>Lista pedidos paginados (más recientes primero) con filtros por cliente, estado y búsqueda.</summary>
     private async Task<PagedResult<PedidoDto>> ListarAsync(PedidoQuery q, CancellationToken ct)
     {
-        var query = db.Salidas.AsNoTracking().AsQueryable();
+        var query = db.Pedidos.AsNoTracking().AsQueryable();
 
-        if (q.ClienteId is int clienteId) query = query.Where(s => s.ClienteId == clienteId);
-        if (!string.IsNullOrWhiteSpace(q.Estado)) query = query.Where(s => s.Estado == q.Estado);
+        if (q.ClienteId is int clienteId) query = query.Where(p => p.ClienteId == clienteId);
+        if (!string.IsNullOrWhiteSpace(q.Estado)) query = query.Where(p => p.Estado.Codigo == q.Estado);
         if (!string.IsNullOrWhiteSpace(q.Buscar))
         {
             var b = q.Buscar.Trim();
-            query = query.Where(s => s.CodigoPedido.Contains(b) || s.Cliente.Nombre.Contains(b) || s.Cliente.Documento.Contains(b));
+            query = query.Where(p => p.Codigo.Contains(b) || p.Cliente.Nombre.Contains(b) || p.Cliente.Documento.Contains(b));
         }
 
-        var codigos = query
-            .GroupBy(s => s.CodigoPedido)
-            .Select(g => new { Codigo = g.Key, Fecha = g.Max(s => s.Fecha) })
-            .OrderByDescending(x => x.Fecha).ThenByDescending(x => x.Codigo);
+        var ordenados = query.OrderByDescending(p => p.Fecha).ThenByDescending(p => p.Id);
 
         var pagina = Math.Max(1, q.Pagina);
         var tamanio = Math.Clamp(q.Tamanio, 1, PaginacionQuery.TamanioMaximo);
-        var total = await codigos.CountAsync(ct);
-        var codigosPagina = await codigos
+        var total = await ordenados.CountAsync(ct);
+        var codigosPagina = await ordenados
             .Skip((pagina - 1) * tamanio)
             .Take(tamanio)
-            .Select(x => x.Codigo)
+            .Select(p => p.Codigo)
             .ToListAsync(ct);
 
-        var pedidos = await CargarPedidosAsync(codigosPagina, ct);
-        var ordenados = codigosPagina.Select(c => pedidos[c]).ToList();
+        var pedidos = await db.CargarPedidosAsync(codigosPagina, ct);
+        var lista = codigosPagina.Where(pedidos.ContainsKey).Select(c => pedidos[c]).ToList();
 
-        return new PagedResult<PedidoDto>(ordenados, pagina, tamanio, total, (int)Math.Ceiling(total / (double)tamanio));
-    }
-
-    private async Task<PedidoDto?> ObtenerPedidoAsync(string codigo, CancellationToken ct)
-    {
-        var pedidos = await CargarPedidosAsync([codigo], ct);
-        return pedidos.GetValueOrDefault(codigo);
-    }
-
-    private async Task<Dictionary<string, PedidoDto>> CargarPedidosAsync(List<string> codigos, CancellationToken ct)
-    {
-        if (codigos.Count == 0) return new Dictionary<string, PedidoDto>();
-
-        var filas = await db.Salidas.AsNoTracking()
-            .Where(s => codigos.Contains(s.CodigoPedido))
-            .OrderBy(s => s.Id)
-            .Select(s => new
-            {
-                s.Id, s.CodigoPedido, s.Fecha, s.Estado, s.ClienteId, s.Observaciones,
-                s.ComprobanteArchivo, s.ComprobanteFecha, s.MotivoRechazo,
-                Cliente = s.Cliente.Nombre, s.Cliente.Telefono, s.Cliente.Direccion,
-                s.ProductoId, Producto = s.Producto.Nombre, s.Producto.ImagenUrl,
-                s.Cantidad, s.PrecioUnitario, s.Total
-            })
-            .ToListAsync(ct);
-
-        return filas
-            .GroupBy(f => f.CodigoPedido)
-            .ToDictionary(g => g.Key, g =>
-            {
-                var primera = g.First();
-                var items = g.Select(f => new PedidoItemDto(f.Id, f.ProductoId, f.Producto, f.ImagenUrl, f.Cantidad, f.PrecioUnitario, f.Total)).ToList();
-                return new PedidoDto(
-                    g.Key, primera.Fecha, primera.Estado, EstadosPedido.Texto(primera.Estado),
-                    primera.ClienteId, primera.Cliente, primera.Telefono, primera.Direccion,
-                    items.Sum(i => i.Subtotal), items.Sum(i => i.Cantidad), primera.Observaciones,
-                    primera.ComprobanteArchivo is not null, primera.ComprobanteFecha, primera.MotivoRechazo,
-                    items);
-            });
+        return new PagedResult<PedidoDto>(lista, pagina, tamanio, total, (int)Math.Ceiling(total / (double)tamanio));
     }
 }

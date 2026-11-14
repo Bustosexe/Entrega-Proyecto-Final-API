@@ -10,12 +10,14 @@ public partial class PanelViewModel(ApiClient api, SesionService sesion) : BaseV
 {
     public ObservableCollection<ProductoDto> StockBajo { get; } = [];
     public ObservableCollection<TopProductoDto> TopProductos { get; } = [];
+    public ObservableCollection<VentaMarcaDto> VentasPorMarca { get; } = [];
 
     /// <summary>Gráfico de facturación de los últimos 7 días (se reemplaza en cada carga para redibujar).</summary>
     [ObservableProperty] private Graficos.GraficoBarras? graficoVentas;
     [ObservableProperty] private string totalSemana = "-";
     [ObservableProperty] private string pedidosSemana = string.Empty;
     [ObservableProperty] private bool sinVentasTop;
+    [ObservableProperty] private bool sinVentasMarca;
 
     [ObservableProperty] private string saludo = string.Empty;
     [ObservableProperty] private string facturacionHoy = "-";
@@ -74,6 +76,17 @@ public partial class PanelViewModel(ApiClient api, SesionService sesion) : BaseV
             TopProductos.Add(top[i]);
         }
         SinVentasTop = TopProductos.Count == 0;
+
+        // Ventas por marca (tabla Marcas)
+        var marcas = await api.GetAsync<List<VentaMarcaDto>>("api/dashboard/ventas-por-marca?cantidad=6");
+        var mayor = marcas.Count == 0 ? 1m : Math.Max(1m, marcas.Max(x => x.Total));
+        VentasPorMarca.Clear();
+        foreach (var m in marcas)
+        {
+            m.Proporcion = (double)(m.Total / mayor);
+            VentasPorMarca.Add(m);
+        }
+        SinVentasMarca = VentasPorMarca.Count == 0;
     });
 
     [RelayCommand]
@@ -197,9 +210,10 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
     private bool _inicializado;
 
     public ObservableCollection<CategoriaDto> Categorias { get; } = [];
+    public ObservableCollection<MarcaDto> Marcas { get; } = [];
 
     [ObservableProperty] private string nombre = string.Empty;
-    [ObservableProperty] private string marca = string.Empty;
+    [ObservableProperty] private MarcaDto? marca;
     [ObservableProperty] private string descripcion = string.Empty;
     [ObservableProperty] private string precio = string.Empty;
     [ObservableProperty] private string stockMinimo = "2";
@@ -222,7 +236,6 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
             EsEdicion = true;
             Titulo = "Editar producto";
             Nombre = p.Nombre;
-            Marca = p.Marca;
             Descripcion = p.Descripcion ?? string.Empty;
             Precio = p.Precio.ToString("0.##", Formato.Cultura);
             StockMinimo = p.StockMinimo.ToString();
@@ -250,6 +263,36 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
             foreach (var c in r.Items.Where(c => c.Activo || c.Id == _producto?.CategoriaId))
                 Categorias.Add(c);
             Categoria = Categorias.FirstOrDefault(c => c.Id == _producto?.CategoriaId);
+
+            var m = await api.GetAsync<PagedResult<MarcaDto>>("api/marcas?tamanio=50");
+            Marcas.Clear();
+            foreach (var x in m.Items.Where(x => x.Activo || x.Id == _producto?.MarcaId))
+                Marcas.Add(x);
+            Marca = Marcas.FirstOrDefault(x => x.Id == _producto?.MarcaId);
+        });
+    }
+
+    /// <summary>Crea una marca sin salir del formulario y la deja seleccionada.</summary>
+    [RelayCommand]
+    private async Task NuevaMarcaAsync()
+    {
+        var nombreMarca = await Dialogos.Pedir("Nueva marca", "Nombre de la marca:", Keyboard.Text, "Ej: Gigabyte");
+        if (string.IsNullOrWhiteSpace(nombreMarca)) return;
+
+        var existente = Marcas.FirstOrDefault(x => string.Equals(x.Nombre, nombreMarca.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (existente is not null)
+        {
+            Marca = existente;
+            return;
+        }
+
+        await EjecutarAsync(async () =>
+        {
+            var creada = await api.PostAsync<MarcaDto>("api/marcas", new { nombre = nombreMarca.Trim(), activo = true });
+            var posicion = Marcas.TakeWhile(x => string.Compare(x.Nombre, creada.Nombre, StringComparison.OrdinalIgnoreCase) < 0).Count();
+            Marcas.Insert(posicion, creada);
+            Marca = creada;
+            Dialogos.Aviso($"Marca creada: {creada.Nombre}");
         });
     }
 
@@ -309,7 +352,7 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
     [RelayCommand]
     private async Task GuardarAsync()
     {
-        if (string.IsNullOrWhiteSpace(Nombre) || string.IsNullOrWhiteSpace(Marca) || Categoria is null)
+        if (string.IsNullOrWhiteSpace(Nombre) || Marca is null || Categoria is null)
         {
             await Dialogos.Advertencia("Datos incompletos", "Completá nombre, marca y categoría.");
             return;
@@ -328,7 +371,7 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
         var cuerpo = new
         {
             nombre = Nombre.Trim(),
-            marca = Marca.Trim(),
+            marcaId = Marca.Id,
             descripcion = string.IsNullOrWhiteSpace(Descripcion) ? null : Descripcion.Trim(),
             precio,
             stockMinimo = minimo,
@@ -387,15 +430,15 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
 }
 
 // =====================================================================
-// Compras a proveedores (ingresos de stock)
+// Compras a proveedores: una factura (Compras) con varios productos (DetallesCompra)
 // =====================================================================
 
-public partial class IngresosViewModel(ApiClient api) : BaseViewModel
+public partial class ComprasViewModel(ApiClient api) : BaseViewModel
 {
     private int _pagina;
     private bool _hayMas;
 
-    public ObservableCollection<IngresoDto> Ingresos { get; } = [];
+    public ObservableCollection<CompraDto> Compras { get; } = [];
 
     [ObservableProperty] private string buscar = string.Empty;
     [ObservableProperty] private string mensajeVacio = "Cargando...";
@@ -414,35 +457,57 @@ public partial class IngresosViewModel(ApiClient api) : BaseViewModel
     }
 
     [RelayCommand]
-    private Task NuevoAsync() => IrAsync("ingresoform");
+    private Task NuevoAsync() => IrAsync("compraform");
 
     private Task CargarAsync(int pagina) => EjecutarAsync(async () =>
     {
-        var url = $"api/ingresos?pagina={pagina}&tamanio=15";
+        var url = $"api/compras?pagina={pagina}&tamanio=10";
         if (!string.IsNullOrWhiteSpace(Buscar)) url += $"&buscar={Uri.EscapeDataString(Buscar.Trim())}";
-        var r = await api.GetAsync<PagedResult<IngresoDto>>(url);
-        if (pagina == 1) Ingresos.Clear();
-        foreach (var i in r.Items) Ingresos.Add(i);
+        var r = await api.GetAsync<PagedResult<CompraDto>>(url);
+        if (pagina == 1) Compras.Clear();
+        foreach (var c in r.Items) Compras.Add(c);
         _pagina = r.Pagina;
         _hayMas = r.Pagina < r.TotalPaginas;
         MensajeVacio = "Todavía no se registraron compras.";
     });
 }
 
-public partial class IngresoFormViewModel(ApiClient api) : BaseViewModel
+/// <summary>Renglón que se está cargando en la compra (todavía no guardado).</summary>
+public class RenglonCompra
+{
+    public int ProductoId { get; init; }
+    public string Producto { get; init; } = string.Empty;
+    public string ImagenCompleta { get; init; } = string.Empty;
+    public int Cantidad { get; init; }
+    public decimal CostoUnitario { get; init; }
+
+    public decimal Subtotal => Cantidad * CostoUnitario;
+    public string Detalle => $"{Cantidad} × {Formato.Moneda(CostoUnitario)}";
+    public string SubtotalTexto => Formato.Moneda(Subtotal);
+}
+
+public partial class CompraFormViewModel(ApiClient api) : BaseViewModel
 {
     private bool _inicializado;
 
     public ObservableCollection<ProductoDto> Productos { get; } = [];
     public ObservableCollection<ProveedorDto> Proveedores { get; } = [];
+    public ObservableCollection<RenglonCompra> Renglones { get; } = [];
 
-    [ObservableProperty] private string buscarProducto = string.Empty;
-    [ObservableProperty] private ProductoDto? producto;
+    // Cabecera (la factura)
     [ObservableProperty] private ProveedorDto? proveedor;
-    [ObservableProperty] private string cantidad = "1";
-    [ObservableProperty] private string costoUnitario = string.Empty;
     [ObservableProperty] private string numeroComprobante = string.Empty;
     [ObservableProperty] private string observaciones = string.Empty;
+
+    // Renglón que se está agregando
+    [ObservableProperty] private string buscarProducto = string.Empty;
+    [ObservableProperty] private ProductoDto? producto;
+    [ObservableProperty] private string cantidad = "1";
+    [ObservableProperty] private string costoUnitario = string.Empty;
+
+    [ObservableProperty] private string totalTexto = Formato.Moneda(0);
+    [ObservableProperty] private string resumenTexto = "Todavía no agregaste productos.";
+    [ObservableProperty] private bool tieneRenglones;
 
     public async Task AlAparecerAsync()
     {
@@ -471,11 +536,11 @@ public partial class IngresoFormViewModel(ApiClient api) : BaseViewModel
     }
 
     [RelayCommand]
-    private async Task GuardarAsync()
+    private async Task AgregarRenglonAsync()
     {
-        if (Producto is null || Proveedor is null)
+        if (Producto is null)
         {
-            await Dialogos.Advertencia("Datos incompletos", "Elegí el producto y el proveedor.");
+            await Dialogos.Advertencia("Elegí un producto", "Seleccioná el producto que llegó.");
             return;
         }
         if (!int.TryParse(Cantidad, out var cant) || cant <= 0)
@@ -489,23 +554,75 @@ public partial class IngresoFormViewModel(ApiClient api) : BaseViewModel
             return;
         }
 
-        IngresoDto? ingreso = null;
+        // Si el producto ya estaba en la compra, se suman las cantidades.
+        var existente = Renglones.FirstOrDefault(r => r.ProductoId == Producto.Id);
+        if (existente is not null)
+        {
+            cant += existente.Cantidad;
+            Renglones.Remove(existente);
+        }
+
+        Renglones.Add(new RenglonCompra
+        {
+            ProductoId = Producto.Id,
+            Producto = Producto.Nombre,
+            ImagenCompleta = Producto.ImagenCompleta,
+            Cantidad = cant,
+            CostoUnitario = costo
+        });
+
+        Producto = null;
+        Cantidad = "1";
+        CostoUnitario = string.Empty;
+        ActualizarTotales();
+        Dialogos.Aviso("Producto agregado a la compra.");
+    }
+
+    public void QuitarRenglon(RenglonCompra renglon)
+    {
+        Renglones.Remove(renglon);
+        ActualizarTotales();
+    }
+
+    private void ActualizarTotales()
+    {
+        TieneRenglones = Renglones.Count > 0;
+        TotalTexto = Formato.Moneda(Renglones.Sum(r => r.Subtotal));
+        var unidades = Renglones.Sum(r => r.Cantidad);
+        ResumenTexto = TieneRenglones
+            ? $"{Renglones.Count} {(Renglones.Count == 1 ? "producto" : "productos")} · {unidades} {(unidades == 1 ? "unidad" : "unidades")}"
+            : "Todavía no agregaste productos.";
+    }
+
+    [RelayCommand]
+    private async Task GuardarAsync()
+    {
+        if (Proveedor is null)
+        {
+            await Dialogos.Advertencia("Falta el proveedor", "Elegí el proveedor de la factura.");
+            return;
+        }
+        if (Renglones.Count == 0)
+        {
+            await Dialogos.Advertencia("Compra vacía", "Agregá al menos un producto con su cantidad y costo.");
+            return;
+        }
+
+        CompraDto? compra = null;
         var ok = await EjecutarAsync(async () =>
         {
-            ingreso = await api.PostAsync<IngresoDto>("api/ingresos", new
+            compra = await api.PostAsync<CompraDto>("api/compras", new
             {
-                productoId = Producto.Id,
                 proveedorId = Proveedor.Id,
-                cantidad = cant,
-                costoUnitario = costo,
                 numeroComprobante = string.IsNullOrWhiteSpace(NumeroComprobante) ? null : NumeroComprobante.Trim(),
-                observaciones = string.IsNullOrWhiteSpace(Observaciones) ? null : Observaciones.Trim()
+                observaciones = string.IsNullOrWhiteSpace(Observaciones) ? null : Observaciones.Trim(),
+                items = Renglones.Select(r => new { productoId = r.ProductoId, cantidad = r.Cantidad, costoUnitario = r.CostoUnitario }).ToList()
             });
         });
 
-        if (ok && ingreso is not null)
+        if (ok && compra is not null)
         {
-            Dialogos.Aviso($"Stock actualizado: +{ingreso.Cantidad} de {ingreso.Producto}");
+            await Dialogos.Exito("¡Compra registrada!", $"{compra.Resumen} sumadas al stock. Total {compra.TotalTexto}.", 1800);
             await IrAsync("..");
         }
     }

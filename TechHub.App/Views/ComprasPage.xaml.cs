@@ -2,11 +2,11 @@ using TechHub.App.ViewModels;
 
 namespace TechHub.App.Views;
 
-public partial class IngresosPage : ContentPage
+public partial class ComprasPage : ContentPage
 {
-    private readonly IngresosViewModel _vm;
+    private readonly ComprasViewModel _vm;
 
-    public IngresosPage(IngresosViewModel vm)
+    public ComprasPage(ComprasViewModel vm)
     {
         InitializeComponent();
         BindingContext = _vm = vm;

@@ -18,11 +18,30 @@ public class CategoriaRequest
     public bool Activo { get; set; } = true;
 }
 
+// ---------------- Marcas ----------------
+
+public record MarcaDto(int Id, string Nombre, bool Activo, int CantidadProductos);
+
+public class MarcaRequest
+{
+    [Required(ErrorMessage = "El nombre es obligatorio."), StringLength(80)]
+    public string Nombre { get; set; } = string.Empty;
+
+    public bool Activo { get; set; } = true;
+}
+
+// ---------------- Tablas de referencia ----------------
+
+public record RolDto(int Id, string Nombre, string? Descripcion, int CantidadUsuarios);
+
+public record EstadoPedidoDto(int Id, string Codigo, string Nombre);
+
 // ---------------- Productos ----------------
 
 public record ProductoDto(
     int Id,
     string Nombre,
+    int MarcaId,
     string Marca,
     string? Descripcion,
     decimal Precio,
@@ -39,8 +58,8 @@ public class ProductoRequest
     [Required(ErrorMessage = "El nombre es obligatorio."), StringLength(150)]
     public string Nombre { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "La marca es obligatoria."), StringLength(80)]
-    public string Marca { get; set; } = string.Empty;
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccioná una marca.")]
+    public int MarcaId { get; set; }
 
     [StringLength(1000)]
     public string? Descripcion { get; set; }
@@ -61,6 +80,7 @@ public class ProductoRequest
 public class ProductoQuery : PaginacionQuery
 {
     public int? CategoriaId { get; set; }
+    public int? MarcaId { get; set; }
     public bool? SoloStockBajo { get; set; }
     /// <summary>Si es true, incluye productos dados de baja (solo personal).</summary>
     public bool IncluirInactivos { get; set; }

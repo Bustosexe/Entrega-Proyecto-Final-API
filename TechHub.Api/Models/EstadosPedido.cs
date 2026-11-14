@@ -1,22 +1,49 @@
 namespace TechHub.Api.Models;
 
 /// <summary>
-/// Ciclo de vida de un pedido (todas las Salidas que comparten CodigoPedido).
-/// Pendiente (esperando la transferencia) → EnRevision (el comprador subió el comprobante)
-/// → Confirmado (el admin verificó el pago) → Entregado.
+/// Valores fijos de la tabla EstadosPedido y reglas del ciclo de vida de un pedido:
+/// Pendiente → EnRevision → Confirmado → Entregado (o Cancelado, que devuelve el stock).
 /// </summary>
 public static class EstadosPedido
 {
+    // Códigos (los que viajan en la API)
     public const string Pendiente = "Pendiente";   // stock reservado, esperando la transferencia
     public const string EnRevision = "EnRevision"; // comprobante subido, el admin lo tiene que verificar
     public const string Confirmado = "Confirmado"; // pago verificado
     public const string Entregado = "Entregado";   // retirado o enviado: venta cerrada
     public const string Cancelado = "Cancelado";   // stock devuelto
 
+    // Ids de la tabla EstadosPedido
+    public const int PendienteId = 1;
+    public const int EnRevisionId = 2;
+    public const int ConfirmadoId = 3;
+    public const int EntregadoId = 4;
+    public const int CanceladoId = 5;
+
     public static readonly string[] Todos = [Pendiente, EnRevision, Confirmado, Entregado, Cancelado];
 
-    /// <summary>Estados que cuentan como venta cobrada (facturación).</summary>
-    public static readonly string[] Cobrados = [Confirmado, Entregado];
+    /// <summary>Estados que cuentan como venta cobrada (facturación, ranking, reportes).</summary>
+    public static readonly int[] CobradosIds = [ConfirmadoId, EntregadoId];
+
+    public static int Id(string codigo) => codigo switch
+    {
+        Pendiente => PendienteId,
+        EnRevision => EnRevisionId,
+        Confirmado => ConfirmadoId,
+        Entregado => EntregadoId,
+        Cancelado => CanceladoId,
+        _ => throw new ArgumentException($"Estado desconocido: {codigo}", nameof(codigo))
+    };
+
+    public static string Codigo(int id) => id switch
+    {
+        PendienteId => Pendiente,
+        EnRevisionId => EnRevision,
+        ConfirmadoId => Confirmado,
+        EntregadoId => Entregado,
+        CanceladoId => Cancelado,
+        _ => throw new ArgumentException($"Estado desconocido: {id}", nameof(id))
+    };
 
     public static string Texto(string estado) => estado switch
     {

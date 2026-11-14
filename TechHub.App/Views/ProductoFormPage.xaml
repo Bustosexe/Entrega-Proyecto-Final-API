@@ -29,9 +29,13 @@
             </Border>
 
             <Label Text="Marca *" Style="{StaticResource Rotulo}" />
-            <Border Style="{StaticResource CampoBorde}">
-                <Entry Text="{Binding Marca}" Placeholder="Nvidia" MaxLength="80" />
-            </Border>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Border Style="{StaticResource CampoBorde}">
+                    <Picker ItemsSource="{Binding Marcas}" SelectedItem="{Binding Marca}" Title="Seleccionar marca" />
+                </Border>
+                <Button Grid.Column="1" Text="+ Nueva" Command="{Binding NuevaMarcaCommand}" Style="{StaticResource BotonChico}"
+                        VerticalOptions="Center" />
+            </Grid>
 
             <Label Text="Categoría *" Style="{StaticResource Rotulo}" />
             <Border Style="{StaticResource CampoBorde}">

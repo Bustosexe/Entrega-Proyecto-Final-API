@@ -20,7 +20,7 @@ Una app móvil (.NET MAUI, Android) consume una API REST (ASP.NET Core 10 + SQL 
 |---|---|---|---|
 | CU01 | Iniciar sesión | Visitante, Administrador | `POST /api/auth/login` |
 | CU02 | Registrarse | Visitante | `POST /api/auth/registro` |
-| CU03 | Explorar catálogo | Visitante | `GET /api/productos`, `GET /api/categorias` |
+| CU03 | Explorar catálogo | Visitante | `GET /api/productos`, `GET /api/categorias`, `GET /api/marcas` |
 | CU04 | Ver detalle de producto | Visitante | `GET /api/productos/{id}`, `GET /api/productos/{id}/relacionados` |
 | CU05 | Gestionar carrito | Visitante | (local en la app) |
 | CU06 | Confirmar pedido | Comprador | `POST /api/pedidos` |
@@ -31,20 +31,21 @@ Una app móvil (.NET MAUI, Android) consume una API REST (ASP.NET Core 10 + SQL 
 | CU11 | Volver a comprar | Comprador (extiende CU09) | (carrito local) |
 | CU12 | Obtener comprobante PDF del pedido | Comprador, Administrador | `GET /api/reportes/pedido/{codigo}`, `POST /api/reportes/enviar` |
 | CU13 | Gestionar mi cuenta | Comprador | `GET /api/auth/perfil`, `PUT /api/auth/perfil` |
-| CU14 | Consultar panel de control | Administrador | `GET /api/dashboard/resumen`, `/ventas-diarias`, `/top-productos` |
+| CU14 | Consultar panel de control | Administrador | `GET /api/dashboard/resumen`, `/ventas-diarias`, `/top-productos`, `/ventas-por-marca` |
 | CU15 | Consultar y filtrar pedidos | Administrador | `GET /api/pedidos?estado=` |
 | CU16 | Revisar pago (aprobar / rechazar) | Administrador | `GET /api/pedidos/{codigo}/comprobante`, `PUT /api/pedidos/{codigo}/estado`, `POST /api/pedidos/{codigo}/rechazar-pago` |
 | CU17 | Registrar entrega o cancelar pedido | Administrador | `PUT /api/pedidos/{codigo}/estado` |
-| CU18 | Gestionar productos | Administrador | `POST/PUT/DELETE /api/productos`, `POST/DELETE /api/productos/{id}/imagen` |
-| CU19 | Registrar compra a proveedor | Administrador | `GET/POST /api/ingresos` |
+| CU18 | Gestionar productos | Administrador | `POST/PUT/DELETE /api/productos`, `POST/DELETE /api/productos/{id}/imagen`, `POST /api/marcas` |
+| CU19 | Registrar compra a proveedor (factura) | Administrador | `GET/POST /api/compras` |
 | CU20 | Gestionar categorías | Administrador | `/api/categorias` |
-| CU21 | Gestionar proveedores | Administrador | `/api/proveedores` |
-| CU22 | Gestionar clientes | Administrador | `/api/clientes` |
-| CU23 | Gestionar usuarios | Administrador | `/api/usuarios` |
-| CU24 | Generar reportes PDF | Administrador | `GET /api/reportes/inventario`, `GET /api/reportes/ventas`, `POST /api/reportes/enviar` |
-| CU25 | Enviar email | Sistema → Servicio de email | (cola interna `EmailBackgroundService`) |
+| CU21 | Gestionar marcas | Administrador | `/api/marcas` |
+| CU22 | Gestionar proveedores | Administrador | `/api/proveedores` |
+| CU23 | Gestionar clientes | Administrador | `/api/clientes` |
+| CU24 | Gestionar usuarios | Administrador | `/api/usuarios`, `GET /api/roles` |
+| CU25 | Generar reportes PDF | Administrador | `GET /api/reportes/inventario`, `GET /api/reportes/ventas`, `POST /api/reportes/enviar` |
+| CU26 | Enviar email | Sistema → Servicio de email | (cola interna `EmailBackgroundService`) |
 
-Estados de un pedido: **Pendiente** (esperando pago) → **EnRevision** (pago en revisión) → **Confirmado** (pago confirmado) → **Entregado**. Desde Pendiente, EnRevision o Confirmado puede pasar a **Cancelado**, y el stock vuelve al inventario.
+Estados de un pedido (tabla **EstadosPedido**): **Pendiente** (esperando pago) → **EnRevision** (pago en revisión) → **Confirmado** (pago confirmado) → **Entregado**. Desde Pendiente, EnRevision o Confirmado puede pasar a **Cancelado**, y el stock vuelve al inventario. Cada cambio queda registrado en **HistorialPedidos** con la fecha, el usuario que lo hizo y un comentario opcional (`GET /api/estados-pedido` lista los estados).
 
 ---
 
@@ -79,7 +80,7 @@ Estados de un pedido: **Pendiente** (esperando pago) → **EnRevision** (pago en
 - **Actor:** Visitante.
 - **Flujo principal:**
   1. La app muestra los productos destacados y el catálogo paginado.
-  2. El usuario puede buscar por texto, filtrar por categoría (chips) y por rango de precio, y ordenar por nombre, más vendidos, novedades o precio.
+  2. El usuario puede buscar por texto o marca, filtrar por categoría (chips rellenos), por marca (chips contorneados) y por rango de precio, y ordenar por nombre, más vendidos, novedades o precio.
   3. Cada tarjeta muestra la foto, el precio y el estado de stock (disponible, "¡Quedan N!" o sin stock).
 - **Flujo alternativo:** desde la tarjeta, el botón **+** agrega el producto al carrito (compra rápida, ver CU05).
 
@@ -103,8 +104,8 @@ Estados de un pedido: **Pendiente** (esperando pago) → **EnRevision** (pago en
   1. El comprador revisa el carrito.
   2. Se muestran los datos de transferencia (CU07).
   3. El comprador confirma.
-  4. La API registra una **Salida** por ítem, todas con el mismo `CodigoPedido` y en estado **Pendiente**. Descuenta y reserva el stock con un `UPDATE` condicional dentro de una transacción.
-  5. Se encola el email "Pedido recibido" con los datos para transferir (CU25).
+  4. La API registra el **Pedido** (cabecera, estado **Pendiente**) con un renglón en **DetallesPedido** por producto, y el primer paso en **HistorialPedidos**. Descuenta y reserva el stock con un `UPDATE` condicional, todo dentro de una transacción.
+  5. Se encola el email "Pedido recibido" con los datos para transferir (CU26).
   6. La app muestra la confirmación y abre el detalle del pedido.
 - **Flujo alternativo:** si otro usuario compró antes y no alcanza el stock, la API responde 409 y no se registra nada. La restricción `CHECK (Stock >= 0)` impide stock negativo.
 - **Postcondición:** el pedido queda Pendiente y el stock queda reservado.
@@ -127,8 +128,9 @@ Estados de un pedido: **Pendiente** (esperando pago) → **EnRevision** (pago en
 - **Actor:** Comprador.
 - **Flujo principal:**
   1. La app lista los pedidos del comprador (paginados), con código, fecha, total y estado de color.
-  2. Al abrir uno se ve una línea de tiempo de 4 pasos (pedido realizado, pago enviado, pago confirmado, entregado), los ítems y los datos de pago.
-- **Flujo alternativo:** si el pago fue rechazado, se muestra el motivo y se puede subir otro comprobante (CU08).
+  2. Al abrir uno se ve una línea de tiempo de 4 pasos (pedido realizado, pago enviado, pago confirmado, entregado) con la **fecha y hora real** de cada paso, los ítems y los datos de pago.
+  3. Debajo, el **historial del pedido** muestra cada cambio de estado con fecha, quién lo hizo ("por vos" o "por la tienda") y el comentario, si lo hay.
+- **Flujo alternativo:** si el pago fue rechazado, se muestra el motivo (también queda en el historial, aunque se rechace más de una vez) y se puede subir otro comprobante (CU08).
 
 ### CU10 · Cancelar pedido
 - **Actor:** Comprador.
@@ -143,7 +145,7 @@ Estados de un pedido: **Pendiente** (esperando pago) → **EnRevision** (pago en
 - **Actores:** Comprador y Administrador.
 - **Flujo principal:**
   1. La API genera el PDF del pedido con QuestPDF.
-  2. El usuario puede abrirlo, compartirlo (WhatsApp, Drive, etc.) o enviarlo por email a la dirección que indique (CU25).
+  2. El usuario puede abrirlo, compartirlo (WhatsApp, Drive, etc.) o enviarlo por email a la dirección que indique (CU26).
 - **Restricción:** un comprador solo puede obtener el PDF de sus propios pedidos.
 
 ### CU13 · Gestionar mi cuenta
@@ -158,6 +160,7 @@ Estados de un pedido: **Pendiente** (esperando pago) → **EnRevision** (pago en
   - unidades y valor del inventario;
   - gráfico de ventas de los últimos 7 días;
   - ranking de los productos más vendidos;
+  - ventas por marca (facturación y unidades);
   - productos por debajo del stock mínimo.
 
 ### CU15 · Consultar y filtrar pedidos
@@ -170,56 +173,70 @@ Estados de un pedido: **Pendiente** (esperando pago) → **EnRevision** (pago en
 - **Flujo principal:**
   1. El administrador abre el comprobante subido por el cliente.
   2. Si la transferencia ingresó, toca **Aprobar** y el pedido pasa a **Confirmado**.
-  3. Se encola el email "Pago confirmado" con el comprobante del pedido en PDF adjunto (CU25).
+  3. Se encola el email "Pago confirmado" con el comprobante del pedido en PDF adjunto (CU26).
 - **Flujo alternativo:** el administrador toca **Rechazar** e ingresa el motivo. El pedido vuelve a **Pendiente** y el comprador ve el motivo.
+- **Auditoría:** la aprobación o el rechazo quedan en **HistorialPedidos** con la fecha, el administrador que lo hizo y el motivo. El administrador ve ese historial con nombres en el detalle del pedido.
 
 ### CU17 · Registrar entrega o cancelar pedido
 - **Actor:** Administrador.
 - **Flujo principal:** un pedido Confirmado se marca como **Entregado** y la venta queda cerrada.
-- **Flujo alternativo:** el administrador cancela un pedido que todavía no fue entregado y el stock vuelve al inventario.
+- **Flujo alternativo:** el administrador cancela un pedido que todavía no fue entregado, puede indicar un motivo (queda en el historial) y el stock vuelve al inventario.
 - **Regla:** la API solo permite las transiciones de estado válidas (`EstadosPedido.TransicionValida`).
 
 ### CU18 · Gestionar productos
 - **Actor:** Administrador.
 - **Flujo principal:** el administrador da de alta, edita o da de baja (baja lógica, `Activo = false`) un producto: nombre, marca, categoría, precio, stock mínimo y descripción.
+- **Marca:** se elige de una lista (tabla **Marcas**). Si no existe, el botón **+ Nueva** la crea sin salir del formulario (CU21).
 - **Fotos:** la foto se sube desde la galería. La API la guarda en `wwwroot/uploads` con un nombre GUID y valida tipo y tamaño. También se puede quitar.
 - **Regla:** el stock no se edita a mano. Entra por CU19 y sale por los pedidos, para que quede la trazabilidad.
 
-### CU19 · Registrar compra a proveedor
+### CU19 · Registrar compra a proveedor (factura)
 - **Actor:** Administrador.
 - **Flujo principal:**
-  1. El administrador elige el producto y el proveedor, e ingresa cantidad, costo unitario y número de comprobante.
-  2. La API registra un **Ingreso**, suma el stock en la misma transacción y guarda qué usuario lo registró.
+  1. El administrador elige el proveedor y carga el número de factura y, si quiere, observaciones.
+  2. Agrega uno o varios productos con su cantidad y costo unitario. La app muestra los renglones, el subtotal de cada uno y el total de la factura. Se puede quitar un renglón antes de guardar.
+  3. Al registrar, la API guarda la **Compra** (cabecera) y sus **DetallesCompra** (renglones), suma el stock de cada producto y guarda qué administrador la registró, todo en una transacción.
+  4. La lista de compras muestra cada factura con su proveedor, número, renglones, total, fecha y quién la cargó.
+- **Flujos alternativos:**
+  - **Factura repetida:** si esa factura del mismo proveedor ya estaba cargada, la API responde 409 y no se guarda nada.
+  - **Producto repetido:** si se agrega dos veces el mismo producto, se suman las cantidades.
 
 ### CU20 · Gestionar categorías
 - **Actor:** Administrador.
 - **Flujo principal:** el administrador da de alta, edita y elimina categorías. El nombre es único.
 - **Regla:** no se puede eliminar una categoría que tiene productos.
 
-### CU21 · Gestionar proveedores
+### CU21 · Gestionar marcas
+- **Actor:** Administrador.
+- **Flujo principal:** el administrador da de alta, edita, desactiva y elimina marcas (AMD, Intel, ASUS, MSI...). El nombre es único.
+- **Regla:** no se puede eliminar una marca que tiene productos; en ese caso se desactiva.
+
+### CU22 · Gestionar proveedores
 - **Actor:** Administrador.
 - **Flujo principal:** el administrador da de alta, edita y da de baja (baja lógica) proveedores. El CUIT es único.
 
-### CU22 · Gestionar clientes
+### CU23 · Gestionar clientes
 - **Actor:** Administrador.
 - **Flujo principal:** el administrador da de alta, edita y da de baja (baja lógica) clientes. El DNI/CUIT es único.
 
-### CU23 · Gestionar usuarios
+### CU24 · Gestionar usuarios
 - **Actor:** Administrador.
-- **Flujo principal:** el administrador da de alta, edita (rol, datos, contraseña) y da de baja (baja lógica) usuarios. El nombre de usuario y el email son únicos.
+- **Flujo principal:** el administrador da de alta nuevos administradores, edita los datos y la contraseña de cualquier cuenta y la da de baja (baja lógica). El nombre de usuario y el email son únicos.
+- **Roles:** cada usuario tiene un rol de la tabla **Roles** (Admin o Comprador). Los compradores se crean solos al registrarse (CU02).
+- **Regla:** siempre tiene que quedar al menos un administrador activo.
 
-### CU24 · Generar reportes PDF
+### CU25 · Generar reportes PDF
 - **Actor:** Administrador.
 - **Flujo principal:**
   1. El administrador elige el reporte:
      - **Inventario valorizado:** stock, mínimo, precio y valor de cada producto a precio de venta.
-     - **Ventas por período:** últimos 7 o 30 días, el mes actual o un rango de fechas a elección.
+     - **Ventas por período:** últimos 7 o 30 días, el mes actual o un rango de fechas a elección. Incluye los productos más vendidos y las **ventas por marca**.
   2. La API genera el PDF.
-  3. El administrador lo abre, lo comparte o lo envía por email (CU25).
+  3. El administrador lo abre, lo comparte o lo envía por email (CU26).
 
-### CU25 · Enviar email
+### CU26 · Enviar email
 - **Actores:** sistema → Servicio de email (Gmail SMTP).
-- **Disparadores:** pedido recibido (CU06), pago confirmado (CU16), envío de un PDF (CU12 y CU24).
+- **Disparadores:** pedido recibido (CU06), pago confirmado (CU16), envío de un PDF (CU12 y CU25).
 - **Flujo principal:**
   1. El mensaje entra en una cola en memoria (`Channel`).
   2. Un `BackgroundService` lo envía con MailKit (STARTTLS, puerto 587) y una contraseña de aplicación de Gmail.

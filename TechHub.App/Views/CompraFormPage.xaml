@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             x:Class="TechHub.App.Views.CompraFormPage"
+             x:DataType="vm:CompraFormViewModel"
+             Title="{Binding Titulo}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="18" Spacing="16">
+            <Label Text="Cargá la factura del proveedor con todos los productos que llegaron. El stock se suma al registrar la compra."
+                   Style="{StaticResource Secundario}" />
+
+            <!-- 1. Datos de la factura -->
+            <Border Style="{StaticResource Tarjeta}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="1. Factura" Style="{StaticResource Subtitulo}" />
+
+                    <Label Text="Proveedor *" Style="{StaticResource Rotulo}" />
+                    <Border Style="{StaticResource CampoBorde}">
+                        <Picker ItemsSource="{Binding Proveedores}" SelectedItem="{Binding Proveedor}" Title="Seleccionar proveedor" />
+                    </Border>
+
+                    <Label Text="N° de factura o remito" Style="{StaticResource Rotulo}" />
+                    <Border Style="{StaticResource CampoBorde}">
+                        <Entry Text="{Binding NumeroComprobante}" Placeholder="A-0001-00001234" MaxLength="50" />
+                    </Border>
+
+                    <Label Text="Observaciones" Style="{StaticResource Rotulo}" />
+                    <Border Style="{StaticResource CampoBorde}">
+                        <Entry Text="{Binding Observaciones}" MaxLength="500" />
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- 2. Agregar productos -->
+            <Border Style="{StaticResource Tarjeta}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="2. Productos" Style="{StaticResource Subtitulo}" />
+
+                    <Label Text="Producto" Style="{StaticResource Rotulo}" />
+                    <Border Style="{StaticResource CampoBorde}">
+                        <Entry Text="{Binding BuscarProducto}" Placeholder="Filtrar productos..." />
+                    </Border>
+                    <Border Style="{StaticResource CampoBorde}">
+                        <Picker ItemsSource="{Binding Productos}" SelectedItem="{Binding Producto}" Title="Seleccionar producto" />
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <VerticalStackLayout>
+                            <Label Text="Cantidad" Style="{StaticResource Rotulo}" />
+                            <Border Style="{StaticResource CampoBorde}">
+                                <Entry Text="{Binding Cantidad}" Keyboard="Numeric" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1">
+                            <Label Text="Costo unitario ($)" Style="{StaticResource Rotulo}" />
+                            <Border Style="{StaticResource CampoBorde}">
+                                <Entry Text="{Binding CostoUnitario}" Keyboard="Numeric" Placeholder="700000" />
+                            </Border>
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <Button Text="+ Agregar a la compra" Command="{Binding AgregarRenglonCommand}"
+                            Style="{StaticResource BotonSecundario}" Margin="0,8,0,0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- 3. Renglones cargados -->
+            <Border Style="{StaticResource Tarjeta}">
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="3. Detalle" Style="{StaticResource Subtitulo}" />
+                        <Label Grid.Column="1" Text="{Binding ResumenTexto}" Style="{StaticResource Secundario}" FontSize="12"
+                               VerticalOptions="Center" />
+                    </Grid>
+
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Renglones}" Spacing="10">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:RenglonCompra">
+                                <Grid ColumnDefinitions="44,*,Auto,36" ColumnSpacing="10">
+                                    <Border Style="{StaticResource CajaImagen}" WidthRequest="44" HeightRequest="44" Padding="2">
+                                        <Image Source="{Binding ImagenCompleta}" Aspect="AspectFit" />
+                                    </Border>
+                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                        <Label Text="{Binding Producto}" FontAttributes="Bold" FontSize="13" LineBreakMode="TailTruncation" />
+                                        <Label Text="{Binding Detalle}" Style="{StaticResource Secundario}" FontSize="12" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="2" Text="{Binding SubtotalTexto}" FontAttributes="Bold" FontSize="13"
+                                           VerticalOptions="Center" />
+                                    <Button Grid.Column="3" Text="✕" Clicked="OnQuitarRenglon" Style="{StaticResource BotonCircular}"
+                                            WidthRequest="32" HeightRequest="32" CornerRadius="16" Padding="0" FontSize="13" VerticalOptions="Center"
+                                            BackgroundColor="{StaticResource PeligroSuave}" TextColor="{StaticResource Peligro}" />
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+
+                    <BoxView HeightRequest="1" Color="{StaticResource Borde}" IsVisible="{Binding TieneRenglones}" />
+                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding TieneRenglones}">
+                        <Label Text="Total de la factura" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="{Binding TotalTexto}" Style="{StaticResource Precio}" FontSize="20" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Registrar compra" Command="{Binding GuardarCommand}" IsEnabled="{Binding NoEstaOcupado}" />
+            <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" Margin="0,0,0,20" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

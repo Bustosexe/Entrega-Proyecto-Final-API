@@ -22,6 +22,7 @@
 
             <Label Text="Gestión" Style="{StaticResource Rotulo}" />
             <Button Text="Categorías" Style="{StaticResource BotonSecundario}" Clicked="OnCategorias" />
+            <Button Text="Marcas" Style="{StaticResource BotonSecundario}" Clicked="OnMarcas" />
             <Button Text="Proveedores" Style="{StaticResource BotonSecundario}" Clicked="OnProveedores" />
             <Button Text="Clientes" Style="{StaticResource BotonSecundario}" Clicked="OnClientes" />
             <Button Text="Usuarios y administradores" Style="{StaticResource BotonSecundario}" Clicked="OnUsuarios" />

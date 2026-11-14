@@ -24,7 +24,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("registro", typeof(RegistroPage));
         Routing.RegisterRoute("pedido", typeof(PedidoDetallePage));
         Routing.RegisterRoute("productoform", typeof(ProductoFormPage));
-        Routing.RegisterRoute("ingresoform", typeof(IngresoFormPage));
+        Routing.RegisterRoute("compraform", typeof(CompraFormPage));
         Routing.RegisterRoute("abmlista", typeof(AbmListaPage));
         Routing.RegisterRoute("abmform", typeof(AbmFormPage));
         Routing.RegisterRoute("reportes", typeof(ReportesPage));

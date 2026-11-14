@@ -43,7 +43,7 @@ public class TokenService(IOptions<JwtOptions> options) : ITokenService
                 [JwtRegisteredClaimNames.Sub] = usuario.Id.ToString(),
                 [JwtRegisteredClaimNames.Jti] = Guid.NewGuid().ToString(),
                 ["name"] = usuario.NombreUsuario,
-                ["role"] = usuario.Rol
+                ["role"] = usuario.Rol.Nombre   // el Rol tiene que venir cargado (Include)
             }
         };
 

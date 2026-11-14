@@ -13,56 +13,83 @@ public class ReglaNegocioException(string mensaje, int statusCode = StatusCodes.
 
 public interface IMovimientoService
 {
-    Task<Ingreso> RegistrarIngresoAsync(int productoId, int proveedorId, int usuarioId, int cantidad,
-        decimal costoUnitario, string? comprobante, string? observaciones, CancellationToken ct = default);
+    /// <summary>Registra una compra a un proveedor (cabecera + renglones) y suma el stock de cada producto.</summary>
+    Task<Compra> RegistrarCompraAsync(int proveedorId, int usuarioId, string? numeroComprobante, string? observaciones,
+        IEnumerable<(int ProductoId, int Cantidad, decimal CostoUnitario)> items, CancellationToken ct = default);
 
-    /// <summary>Crea un pedido (una Salida por producto) reservando el stock. Devuelve el código del pedido.</summary>
+    /// <summary>Crea un pedido (cabecera + renglones) reservando el stock. Devuelve el código del pedido.</summary>
     Task<string> RegistrarPedidoAsync(int clienteId, int usuarioId, IEnumerable<(int ProductoId, int Cantidad)> items,
         string estadoInicial, string? observaciones, CancellationToken ct = default);
 
-    /// <summary>Cambia el estado de todo el pedido. Si se cancela, devuelve el stock.</summary>
-    Task CambiarEstadoAsync(string codigoPedido, string nuevoEstado, CancellationToken ct = default);
+    /// <summary>
+    /// Cambia el estado del pedido y lo registra en el historial (quién, cuándo y por qué).
+    /// Si se cancela, devuelve el stock.
+    /// </summary>
+    Task CambiarEstadoAsync(string codigoPedido, string nuevoEstado, int usuarioId, string? comentario = null,
+        CancellationToken ct = default);
 }
 
 /// <summary>
 /// Lógica de stock. Cada movimiento se registra dentro de una transacción:
-/// o se guardan el registro y el cambio de stock, o no se guarda nada.
+/// o se guardan los registros y el cambio de stock, o no se guarda nada.
 /// </summary>
 public class MovimientoService(AppDbContext db) : IMovimientoService
 {
-    public async Task<Ingreso> RegistrarIngresoAsync(int productoId, int proveedorId, int usuarioId, int cantidad,
-        decimal costoUnitario, string? comprobante, string? observaciones, CancellationToken ct = default)
+    public async Task<Compra> RegistrarCompraAsync(int proveedorId, int usuarioId, string? numeroComprobante, string? observaciones,
+        IEnumerable<(int ProductoId, int Cantidad, decimal CostoUnitario)> items, CancellationToken ct = default)
     {
+        // Si el mismo producto viene dos veces, se suman las cantidades (con el último costo informado).
+        var lineas = items
+            .GroupBy(i => i.ProductoId)
+            .Select(g => (ProductoId: g.Key, Cantidad: g.Sum(x => x.Cantidad), CostoUnitario: g.Last().CostoUnitario))
+            .ToList();
+
+        if (lineas.Count == 0)
+            throw new ReglaNegocioException("La compra no tiene productos.");
+
         if (!await db.Proveedores.AnyAsync(p => p.Id == proveedorId && p.Activo, ct))
             throw new ReglaNegocioException("El proveedor no existe o está dado de baja.", StatusCodes.Status404NotFound);
 
-        if (!await db.Productos.AnyAsync(p => p.Id == productoId, ct))
-            throw new ReglaNegocioException("El producto no existe.", StatusCodes.Status404NotFound);
+        var numero = string.IsNullOrWhiteSpace(numeroComprobante) ? null : numeroComprobante.Trim();
+        if (numero is not null && await db.Compras.AnyAsync(c => c.ProveedorId == proveedorId && c.NumeroComprobante == numero, ct))
+            throw new ReglaNegocioException($"La factura {numero} de este proveedor ya fue cargada.", StatusCodes.Status409Conflict);
+
+        var ids = lineas.Select(l => l.ProductoId).ToList();
+        var existentes = await db.Productos.Where(p => ids.Contains(p.Id)).Select(p => p.Id).ToListAsync(ct);
+        var faltante = ids.Except(existentes).FirstOrDefault();
+        if (faltante != 0)
+            throw new ReglaNegocioException($"El producto {faltante} no existe.", StatusCodes.Status404NotFound);
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-        // UPDATE atómico en SQL: Stock = Stock + @cantidad
-        await db.Productos
-            .Where(p => p.Id == productoId)
-            .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock + cantidad), ct);
-
-        var ingreso = new Ingreso
+        foreach (var l in lineas)
         {
-            ProductoId = productoId,
+            var cantidad = l.Cantidad;
+            // UPDATE atómico en SQL: Stock = Stock + @cantidad
+            await db.Productos
+                .Where(p => p.Id == l.ProductoId)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock + cantidad), ct);
+        }
+
+        var compra = new Compra
+        {
             ProveedorId = proveedorId,
             UsuarioId = usuarioId,
-            Cantidad = cantidad,
-            CostoUnitario = costoUnitario,
-            Total = cantidad * costoUnitario,
-            NumeroComprobante = comprobante,
+            NumeroComprobante = numero,
             Observaciones = observaciones,
-            Fecha = DateTime.UtcNow
+            Fecha = DateTime.UtcNow,
+            Detalles = lineas.Select(l => new DetalleCompra
+            {
+                ProductoId = l.ProductoId,
+                Cantidad = l.Cantidad,
+                CostoUnitario = l.CostoUnitario
+            }).ToList()
         };
-        db.Ingresos.Add(ingreso);
+        db.Compras.Add(compra);
         await db.SaveChangesAsync(ct);
 
         await tx.CommitAsync(ct);
-        return ingreso;
+        return compra;
     }
 
     public async Task<string> RegistrarPedidoAsync(int clienteId, int usuarioId, IEnumerable<(int ProductoId, int Cantidad)> items,
@@ -94,8 +121,17 @@ public class MovimientoService(AppDbContext db) : IMovimientoService
                 throw new ReglaNegocioException($"\"{p.Nombre}\" ya no está a la venta.");
         }
 
-        var codigo = GenerarCodigo();
-        var fecha = DateTime.UtcNow;
+        var estadoId = EstadosPedido.Id(estadoInicial);
+        var ahora = DateTime.UtcNow;
+        var pedido = new Pedido
+        {
+            Codigo = GenerarCodigo(),
+            Fecha = ahora,
+            ClienteId = clienteId,
+            UsuarioId = usuarioId,
+            EstadoId = estadoId,
+            Observaciones = observaciones
+        };
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
@@ -115,33 +151,31 @@ public class MovimientoService(AppDbContext db) : IMovimientoService
                     $"Stock insuficiente para \"{p.Nombre}\". Disponible: {p.Stock}, solicitado: {cantidad}.",
                     StatusCodes.Status409Conflict);
 
-            db.Salidas.Add(new Salida
+            pedido.Detalles.Add(new DetallePedido
             {
-                CodigoPedido = codigo,
-                Estado = estadoInicial,
-                Fecha = fecha,
                 ProductoId = l.ProductoId,
-                ClienteId = clienteId,
-                UsuarioId = usuarioId,
                 Cantidad = cantidad,
-                PrecioUnitario = p.Precio,          // precio congelado al momento de la compra
-                Total = cantidad * p.Precio,
-                Observaciones = observaciones
+                PrecioUnitario = p.Precio   // precio congelado al momento de la compra
             });
         }
 
+        pedido.Historial.Add(new HistorialPedido { EstadoId = estadoId, Fecha = ahora, UsuarioId = usuarioId });
+
+        db.Pedidos.Add(pedido);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
-        return codigo;
+        return pedido.Codigo;
     }
 
-    public async Task CambiarEstadoAsync(string codigoPedido, string nuevoEstado, CancellationToken ct = default)
+    public async Task CambiarEstadoAsync(string codigoPedido, string nuevoEstado, int usuarioId, string? comentario = null,
+        CancellationToken ct = default)
     {
-        var filas = await db.Salidas.Where(s => s.CodigoPedido == codigoPedido).ToListAsync(ct);
-        if (filas.Count == 0)
-            throw new ReglaNegocioException("El pedido no existe.", StatusCodes.Status404NotFound);
+        var pedido = await db.Pedidos
+            .Include(p => p.Detalles)
+            .FirstOrDefaultAsync(p => p.Codigo == codigoPedido, ct)
+            ?? throw new ReglaNegocioException("El pedido no existe.", StatusCodes.Status404NotFound);
 
-        var actual = filas[0].Estado;
+        var actual = EstadosPedido.Codigo(pedido.EstadoId);
         if (!EstadosPedido.TransicionValida(actual, nuevoEstado))
             throw new ReglaNegocioException(
                 $"No se puede pasar un pedido de \"{EstadosPedido.Texto(actual)}\" a \"{EstadosPedido.Texto(nuevoEstado)}\".",
@@ -152,17 +186,25 @@ public class MovimientoService(AppDbContext db) : IMovimientoService
         if (nuevoEstado == EstadosPedido.Cancelado)
         {
             // Devuelve al stock lo que estaba reservado.
-            foreach (var f in filas)
+            foreach (var d in pedido.Detalles)
             {
-                var cantidad = f.Cantidad;
+                var cantidad = d.Cantidad;
                 await db.Productos
-                    .Where(p => p.Id == f.ProductoId)
+                    .Where(p => p.Id == d.ProductoId)
                     .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock + cantidad), ct);
             }
         }
 
-        foreach (var f in filas)
-            f.Estado = nuevoEstado;
+        var estadoId = EstadosPedido.Id(nuevoEstado);
+        pedido.EstadoId = estadoId;
+        db.HistorialPedidos.Add(new HistorialPedido
+        {
+            PedidoId = pedido.Id,
+            EstadoId = estadoId,
+            Fecha = DateTime.UtcNow,
+            UsuarioId = usuarioId,
+            Comentario = string.IsNullOrWhiteSpace(comentario) ? null : comentario.Trim()
+        });
 
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);

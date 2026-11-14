@@ -32,11 +32,14 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
         if (!string.IsNullOrWhiteSpace(q.Buscar))
         {
             var b = q.Buscar.Trim();
-            query = query.Where(p => p.Nombre.Contains(b) || p.Marca.Contains(b));
+            query = query.Where(p => p.Nombre.Contains(b) || p.Marca.Nombre.Contains(b));
         }
 
         if (q.CategoriaId is int categoriaId)
             query = query.Where(p => p.CategoriaId == categoriaId);
+
+        if (q.MarcaId is int marcaId)
+            query = query.Where(p => p.MarcaId == marcaId);
 
         if (q.SoloStockBajo == true)
             query = query.Where(p => p.Stock <= p.StockMinimo);
@@ -52,14 +55,14 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
             "nuevos" => query.OrderByDescending(p => p.FechaCreacion).ThenByDescending(p => p.Id),
             // Más vendidos: unidades vendidas en pedidos no cancelados (subconsulta en SQL).
             "vendidos" => query
-                .OrderByDescending(p => p.Salidas.Where(s => s.Estado != EstadosPedido.Cancelado).Sum(s => (int?)s.Cantidad) ?? 0)
+                .OrderByDescending(p => p.DetallesPedido.Where(d => d.Pedido.EstadoId != EstadosPedido.CanceladoId).Sum(d => (int?)d.Cantidad) ?? 0)
                 .ThenBy(p => p.Nombre),
             _ => query.OrderBy(p => p.Nombre).ThenBy(p => p.Id)
         };
 
         return await query
             .Select(p => new ProductoDto(
-                p.Id, p.Nombre, p.Marca, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
+                p.Id, p.Nombre, p.MarcaId, p.Marca.Nombre, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
                 p.Stock <= p.StockMinimo, p.ImagenUrl, p.Activo, p.CategoriaId, p.Categoria.Nombre))
             .ToPagedResultAsync(q.Pagina, q.Tamanio, ct);
     }
@@ -87,29 +90,28 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
         var lista = await db.Productos.AsNoTracking()
             .Where(p => p.Activo && p.CategoriaId == categoriaId && p.Id != id)
             .OrderByDescending(p => p.Stock > 0)
-            .ThenByDescending(p => p.Salidas.Where(s => s.Estado != EstadosPedido.Cancelado).Sum(s => (int?)s.Cantidad) ?? 0)
+            .ThenByDescending(p => p.DetallesPedido.Where(d => d.Pedido.EstadoId != EstadosPedido.CanceladoId).Sum(d => (int?)d.Cantidad) ?? 0)
             .ThenBy(p => p.Nombre)
             .Take(cantidad)
             .Select(p => new ProductoDto(
-                p.Id, p.Nombre, p.Marca, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
+                p.Id, p.Nombre, p.MarcaId, p.Marca.Nombre, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
                 p.Stock <= p.StockMinimo, p.ImagenUrl, p.Activo, p.CategoriaId, p.Categoria.Nombre))
             .ToListAsync(ct);
 
         return Ok(lista);
     }
 
-    /// <summary>Crea un producto con stock 0. El stock solo aumenta registrando Ingresos (trazabilidad).</summary>
+    /// <summary>Crea un producto con stock 0. El stock solo aumenta registrando Compras (trazabilidad).</summary>
     [HttpPost]
     [ProducesResponseType<ProductoDto>(StatusCodes.Status201Created)]
     public async Task<ActionResult<ProductoDto>> Crear(ProductoRequest req, CancellationToken ct)
     {
-        if (!await db.Categorias.AnyAsync(c => c.Id == req.CategoriaId, ct))
-            return BadRequest(new ProblemDetails { Status = 400, Title = "Categoría inválida", Detail = "La categoría no existe." });
+        if (await ValidarReferenciasAsync(req, ct) is { } error) return error;
 
         var producto = new Producto
         {
             Nombre = req.Nombre.Trim(),
-            Marca = req.Marca.Trim(),
+            MarcaId = req.MarcaId,
             Descripcion = req.Descripcion?.Trim(),
             Precio = req.Precio,
             StockMinimo = req.StockMinimo,
@@ -130,11 +132,10 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
         var producto = await db.Productos.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (producto is null) return NotFound();
 
-        if (!await db.Categorias.AnyAsync(c => c.Id == req.CategoriaId, ct))
-            return BadRequest(new ProblemDetails { Status = 400, Title = "Categoría inválida", Detail = "La categoría no existe." });
+        if (await ValidarReferenciasAsync(req, ct) is { } error) return error;
 
         producto.Nombre = req.Nombre.Trim();
-        producto.Marca = req.Marca.Trim();
+        producto.MarcaId = req.MarcaId;
         producto.Descripcion = req.Descripcion?.Trim();
         producto.Precio = req.Precio;
         producto.StockMinimo = req.StockMinimo;
@@ -193,11 +194,20 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
         return NoContent();
     }
 
+    private async Task<ActionResult?> ValidarReferenciasAsync(ProductoRequest req, CancellationToken ct)
+    {
+        if (!await db.Categorias.AnyAsync(c => c.Id == req.CategoriaId, ct))
+            return BadRequest(new ProblemDetails { Status = 400, Title = "Categoría inválida", Detail = "La categoría no existe." });
+        if (!await db.Marcas.AnyAsync(m => m.Id == req.MarcaId, ct))
+            return BadRequest(new ProblemDetails { Status = 400, Title = "Marca inválida", Detail = "La marca no existe." });
+        return null;
+    }
+
     private Task<ProductoDto?> ProyectarAsync(int id, CancellationToken ct) =>
         db.Productos.AsNoTracking()
             .Where(p => p.Id == id)
             .Select(p => new ProductoDto(
-                p.Id, p.Nombre, p.Marca, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
+                p.Id, p.Nombre, p.MarcaId, p.Marca.Nombre, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
                 p.Stock <= p.StockMinimo, p.ImagenUrl, p.Activo, p.CategoriaId, p.Categoria.Nombre))
             .FirstOrDefaultAsync(ct);
 }

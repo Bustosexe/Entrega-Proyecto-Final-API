@@ -3,57 +3,69 @@ using TechHub.Api.Common;
 
 namespace TechHub.Api.DTOs;
 
-// ---------------- Ingresos (compras a proveedor) ----------------
+// ---------------- Compras a proveedores (cabecera + detalle) ----------------
 
-public record IngresoDto(
+public record DetalleCompraDto(
     int Id,
-    DateTime Fecha,
     int ProductoId,
     string Producto,
-    int ProveedorId,
-    string Proveedor,
+    string? ImagenUrl,
     int Cantidad,
     decimal CostoUnitario,
-    decimal Total,
+    decimal Subtotal);
+
+public record CompraDto(
+    int Id,
+    DateTime Fecha,
+    int ProveedorId,
+    string Proveedor,
     string? NumeroComprobante,
     string? Observaciones,
-    string RegistradoPor);
+    string RegistradoPor,
+    int Unidades,
+    decimal Total,
+    IReadOnlyList<DetalleCompraDto> Items);
 
-public class IngresoRequest
+public class DetalleCompraRequest
 {
     [Range(1, int.MaxValue, ErrorMessage = "Seleccioná un producto.")]
     public int ProductoId { get; set; }
-
-    [Range(1, int.MaxValue, ErrorMessage = "Seleccioná un proveedor.")]
-    public int ProveedorId { get; set; }
 
     [Range(1, 100000, ErrorMessage = "La cantidad debe ser mayor a 0.")]
     public int Cantidad { get; set; }
 
     [Range(typeof(decimal), "0", "999999999", ErrorMessage = "El costo debe ser mayor o igual a 0.")]
     public decimal CostoUnitario { get; set; }
+}
+
+public class CompraRequest
+{
+    [Range(1, int.MaxValue, ErrorMessage = "Seleccioná un proveedor.")]
+    public int ProveedorId { get; set; }
 
     [StringLength(50)]
     public string? NumeroComprobante { get; set; }
 
     [StringLength(500)]
     public string? Observaciones { get; set; }
+
+    [Required, MinLength(1, ErrorMessage = "Agregá al menos un producto."), MaxLength(50)]
+    public List<DetalleCompraRequest> Items { get; set; } = [];
 }
 
-/// <summary>Filtros para el historial de ingresos.</summary>
-public class MovimientoQuery : PaginacionQuery
+/// <summary>Filtros del listado de compras.</summary>
+public class CompraQuery : PaginacionQuery
 {
+    public int? ProveedorId { get; set; }
     public int? ProductoId { get; set; }
-    /// <summary>Proveedor en ingresos.</summary>
-    public int? TerceroId { get; set; }
     public DateTime? Desde { get; set; }
     public DateTime? Hasta { get; set; }
 }
 
-// ---------------- Pedidos (Salidas agrupadas por CodigoPedido) ----------------
+// ---------------- Pedidos (cabecera + detalle + historial) ----------------
 
 public record PedidoItemDto(
-    int SalidaId,
+    int DetalleId,
     int ProductoId,
     string Producto,
     string? ImagenUrl,
@@ -76,7 +88,17 @@ public record PedidoDto(
     bool TieneComprobante,
     DateTime? ComprobanteFecha,
     string? MotivoRechazo,
-    IReadOnlyList<PedidoItemDto> Items);
+    IReadOnlyList<PedidoItemDto> Items,
+    IReadOnlyList<HistorialPedidoDto> Historial);
+
+/// <summary>Un cambio de estado del pedido: cuándo, a qué estado, quién y por qué.</summary>
+public record HistorialPedidoDto(
+    DateTime Fecha,
+    string Estado,
+    string EstadoTexto,
+    string? Usuario,
+    bool PorAdministrador,
+    string? Comentario);
 
 public class RechazarPagoRequest
 {
@@ -128,6 +150,10 @@ public class CambiarEstadoRequest
     [Required]
     [RegularExpression("^(Confirmado|Entregado|Cancelado)$", ErrorMessage = "Estado inválido: Confirmado, Entregado o Cancelado.")]
     public string Estado { get; set; } = string.Empty;
+
+    /// <summary>Opcional: queda registrado en el historial del pedido (ej: motivo de la cancelación).</summary>
+    [StringLength(300)]
+    public string? Comentario { get; set; }
 }
 
 public class PedidoQuery : PaginacionQuery
@@ -157,3 +183,6 @@ public record VentaDiaDto(DateTime Fecha, string Etiqueta, decimal Total, int Pe
 
 /// <summary>Ranking de productos por unidades vendidas.</summary>
 public record TopProductoDto(int ProductoId, string Producto, string? ImagenUrl, int Unidades, decimal Total);
+
+/// <summary>Ventas cobradas agrupadas por marca.</summary>
+public record VentaMarcaDto(int MarcaId, string Marca, int Unidades, decimal Total);

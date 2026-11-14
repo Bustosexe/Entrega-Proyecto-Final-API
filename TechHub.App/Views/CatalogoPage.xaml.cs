@@ -37,6 +37,12 @@ public partial class CatalogoPage : ContentPage
             _vm.AgregarRapido(producto);
     }
 
+    private async void OnMarcaTocada(object? sender, TappedEventArgs e)
+    {
+        if (sender is BindableObject { BindingContext: MarcaFiltro marca })
+            await _vm.SeleccionarMarcaAsync(marca);
+    }
+
     private async void OnCategoriaTocada(object? sender, TappedEventArgs e)
     {
         if (sender is BindableObject { BindingContext: CategoriaFiltro categoria })

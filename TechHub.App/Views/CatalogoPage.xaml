@@ -7,7 +7,7 @@
              x:DataType="vm:CatalogoViewModel"
              Title="TechHub">
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
 
         <!-- Encabezado con buscador -->
         <VerticalStackLayout Grid.Row="0" Padding="20,4,20,4" Spacing="14">
@@ -37,8 +37,25 @@
             </HorizontalStackLayout>
         </ScrollView>
 
+        <!-- Filtro por marca (tabla Marcas) -->
+        <ScrollView Grid.Row="2" Orientation="Horizontal" HorizontalScrollBarVisibility="Never" Margin="0,8,0,0">
+            <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Marcas}" Spacing="6" Padding="20,0">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MarcaFiltro">
+                        <Border Padding="12,6" StrokeShape="RoundRectangle 16" StrokeThickness="1"
+                                Stroke="{Binding ColorBorde}" BackgroundColor="{Binding Fondo}" VerticalOptions="Center">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnMarcaTocada" />
+                            </Border.GestureRecognizers>
+                            <Label Text="{Binding Nombre}" TextColor="{Binding ColorTexto}" FontSize="12" FontAttributes="Bold" />
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </HorizontalStackLayout>
+        </ScrollView>
+
         <!-- Resultados, filtro de precio y orden -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Padding="20,8,14,0">
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6" Padding="20,8,14,0">
             <Label Text="{Binding ResultadoTexto}" Style="{StaticResource Secundario}" VerticalOptions="Center" />
             <Button Grid.Column="1" Text="{Binding PrecioTexto}" Command="{Binding ElegirPrecioCommand}"
                     Style="{StaticResource BotonChico}" VerticalOptions="Center" />
@@ -47,7 +64,7 @@
         </Grid>
 
         <!-- Grilla de productos con scroll infinito (paginación de la API) -->
-        <RefreshView Grid.Row="3" IsRefreshing="{Binding EstaRefrescando}" Command="{Binding RecargarCommand}">
+        <RefreshView Grid.Row="4" IsRefreshing="{Binding EstaRefrescando}" Command="{Binding RecargarCommand}">
             <CollectionView ItemsSource="{Binding Productos}"
                             SelectionMode="Single"
                             SelectionChanged="OnProductoSeleccionado"

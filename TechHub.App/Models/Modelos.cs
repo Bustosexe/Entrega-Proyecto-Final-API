@@ -91,10 +91,21 @@ public class CategoriaDto
     public override string ToString() => Nombre; // texto que muestra el Picker
 }
 
+public class MarcaDto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public bool Activo { get; set; }
+    public int CantidadProductos { get; set; }
+
+    public override string ToString() => Nombre; // texto que muestra el Picker
+}
+
 public class ProductoDto
 {
     public int Id { get; set; }
     public string Nombre { get; set; } = string.Empty;
+    public int MarcaId { get; set; }
     public string Marca { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public decimal Precio { get; set; }
@@ -140,7 +151,7 @@ public class ProveedorDto
 
 public class PedidoItemDto
 {
-    public int SalidaId { get; set; }
+    public int DetalleId { get; set; }
     public int ProductoId { get; set; }
     public string Producto { get; set; } = string.Empty;
     public string? ImagenUrl { get; set; }
@@ -171,6 +182,8 @@ public class PedidoDto
     public int Unidades { get; set; }
     public string? Observaciones { get; set; }
     public List<PedidoItemDto> Items { get; set; } = [];
+    /// <summary>Cada cambio de estado (tabla HistorialPedidos): fecha, quién y comentario.</summary>
+    public List<HistorialPedidoDto> Historial { get; set; } = [];
 
     [JsonIgnore] public string FechaTexto => Formato.Fecha(Fecha);
     [JsonIgnore] public string TotalTexto => Formato.Moneda(Total);
@@ -178,37 +191,64 @@ public class PedidoDto
 
     [JsonIgnore] public string ComprobanteFechaTexto => ComprobanteFecha is DateTime f ? Formato.Fecha(f) : string.Empty;
 
-    [JsonIgnore]
-    public Color EstadoColor => Estado switch
-    {
-        "Pendiente" => Paleta.Alerta,
-        "EnRevision" => Paleta.Violeta,
-        "Confirmado" => Paleta.Info,
-        "Entregado" => Paleta.Exito,
-        "Cancelado" => Paleta.Peligro,
-        _ => Paleta.Gris
-    };
+    [JsonIgnore] public Color EstadoColor => EstadosPedido.ColorDe(Estado);
 }
 
-public class IngresoDto
+public class HistorialPedidoDto
+{
+    public DateTime Fecha { get; set; }
+    public string Estado { get; set; } = string.Empty;
+    public string EstadoTexto { get; set; } = string.Empty;
+    public string? Usuario { get; set; }
+    public bool PorAdministrador { get; set; }
+    public string? Comentario { get; set; }
+
+    /// <summary>"por vos", "por la tienda", "por Ana (admin)"... lo completa la pantalla según quién mira.</summary>
+    [JsonIgnore] public string Quien { get; set; } = string.Empty;
+
+    [JsonIgnore] public string FechaTexto => Formato.Fecha(Fecha);
+    [JsonIgnore] public string FechaCorta =>
+        DateTime.SpecifyKind(Fecha, DateTimeKind.Utc).ToLocalTime().ToString("dd/MM HH:mm", Formato.Cultura);
+    [JsonIgnore] public bool TieneComentario => !string.IsNullOrWhiteSpace(Comentario);
+    [JsonIgnore] public string Detalle => string.IsNullOrEmpty(Quien) ? FechaTexto : $"{FechaTexto} · {Quien}";
+    [JsonIgnore] public Color Color => EstadosPedido.ColorDe(Estado);
+}
+
+// ---------------- Compras a proveedores ----------------
+
+public class DetalleCompraDto
+{
+    public int Id { get; set; }
+    public int ProductoId { get; set; }
+    public string Producto { get; set; } = string.Empty;
+    public string? ImagenUrl { get; set; }
+    public int Cantidad { get; set; }
+    public decimal CostoUnitario { get; set; }
+    public decimal Subtotal { get; set; }
+
+    [JsonIgnore] public string Linea => $"{Cantidad} × {Producto}";
+    [JsonIgnore] public string SubtotalTexto => Formato.Moneda(Subtotal);
+}
+
+public class CompraDto
 {
     public int Id { get; set; }
     public DateTime Fecha { get; set; }
-    public int ProductoId { get; set; }
-    public string Producto { get; set; } = string.Empty;
     public int ProveedorId { get; set; }
     public string Proveedor { get; set; } = string.Empty;
-    public int Cantidad { get; set; }
-    public decimal CostoUnitario { get; set; }
-    public decimal Total { get; set; }
     public string? NumeroComprobante { get; set; }
     public string? Observaciones { get; set; }
     public string RegistradoPor { get; set; } = string.Empty;
+    public int Unidades { get; set; }
+    public decimal Total { get; set; }
+    public List<DetalleCompraDto> Items { get; set; } = [];
 
     [JsonIgnore] public string FechaTexto => Formato.Fecha(Fecha);
     [JsonIgnore] public string TotalTexto => Formato.Moneda(Total);
-    [JsonIgnore] public string Detalle => $"+{Cantidad} u. x {Formato.Moneda(CostoUnitario)} · {Proveedor}";
-    [JsonIgnore] public string Comprobante => string.IsNullOrWhiteSpace(NumeroComprobante) ? $"por {RegistradoPor}" : $"Comp. {NumeroComprobante} · por {RegistradoPor}";
+    [JsonIgnore] public string Factura => string.IsNullOrWhiteSpace(NumeroComprobante) ? "Sin número de factura" : $"Factura {NumeroComprobante}";
+    [JsonIgnore] public string Resumen =>
+        $"{Items.Count} {(Items.Count == 1 ? "producto" : "productos")} · {Unidades} {(Unidades == 1 ? "unidad" : "unidades")}";
+    [JsonIgnore] public string Registro => $"{FechaTexto} · por {RegistradoPor}";
 }
 
 public class ResumenDto
@@ -250,6 +290,19 @@ public class TopProductoDto
     [JsonIgnore] public string Detalle => $"{Unidades} {(Unidades == 1 ? "unidad" : "unidades")} · {Formato.Moneda(Total)}";
 }
 
+public class VentaMarcaDto
+{
+    public int MarcaId { get; set; }
+    public string Marca { get; set; } = string.Empty;
+    public int Unidades { get; set; }
+    public decimal Total { get; set; }
+
+    /// <summary>Proporción respecto de la marca que más facturó (0 a 1), para la barra.</summary>
+    [JsonIgnore] public double Proporcion { get; set; }
+    [JsonIgnore] public string TotalTexto => Formato.Moneda(Total);
+    [JsonIgnore] public string Detalle => $"{Unidades} {(Unidades == 1 ? "unidad" : "unidades")}";
+}
+
 public class DatosTransferenciaDto
 {
     public string Alias { get; set; } = string.Empty;
@@ -260,9 +313,19 @@ public class DatosTransferenciaDto
     public int HorasReserva { get; set; }
 }
 
-/// <summary>Estados de pedido: código de la API y texto para mostrar.</summary>
+/// <summary>Estados de pedido: código de la API, texto para mostrar y color.</summary>
 public static class EstadosPedido
 {
+    public static Color ColorDe(string estado) => estado switch
+    {
+        "Pendiente" => Paleta.Alerta,
+        "EnRevision" => Paleta.Violeta,
+        "Confirmado" => Paleta.Info,
+        "Entregado" => Paleta.Exito,
+        "Cancelado" => Paleta.Peligro,
+        _ => Paleta.Gris
+    };
+
     public static readonly (string Codigo, string Texto)[] Filtros =
     [
         ("", "Todos"),

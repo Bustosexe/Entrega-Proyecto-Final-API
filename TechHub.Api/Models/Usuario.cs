@@ -11,7 +11,9 @@ public class Usuario
     public string NombreCompleto { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
-    public string Rol { get; set; } = Roles.Comprador;
+    /// <summary>Perfil de acceso (tabla Roles): Admin o Comprador.</summary>
+    public int RolId { get; set; } = Roles.CompradorId;
+    public Rol Rol { get; set; } = null!;
     public bool Activo { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
 
@@ -19,6 +21,10 @@ public class Usuario
     public int? ClienteId { get; set; }
     public Cliente? Cliente { get; set; }
 
-    public ICollection<Ingreso> Ingresos { get; set; } = new List<Ingreso>();
-    public ICollection<Salida> Salidas { get; set; } = new List<Salida>();
+    /// <summary>Compras a proveedores que registró (solo administradores).</summary>
+    public ICollection<Compra> Compras { get; set; } = new List<Compra>();
+    /// <summary>Pedidos que registró (los suyos, o ventas en el local si es administrador).</summary>
+    public ICollection<Pedido> Pedidos { get; set; } = new List<Pedido>();
+    /// <summary>Cambios de estado de pedidos que hizo (auditoría).</summary>
+    public ICollection<HistorialPedido> CambiosDeEstado { get; set; } = new List<HistorialPedido>();
 }

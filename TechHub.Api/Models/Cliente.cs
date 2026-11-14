@@ -15,5 +15,5 @@ public class Cliente
     /// <summary>Cuenta de la app, si el cliente se registró.</summary>
     public Usuario? Usuario { get; set; }
 
-    public ICollection<Salida> Salidas { get; set; } = new List<Salida>();
+    public ICollection<Pedido> Pedidos { get; set; } = new List<Pedido>();
 }

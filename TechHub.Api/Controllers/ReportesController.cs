@@ -107,35 +107,23 @@ public class ReportesController(
 
     private async Task<(byte[] Bytes, PedidoDto Pedido)> GenerarPedidoAsync(string codigo, CancellationToken ct)
     {
-        var filas = await db.Salidas.AsNoTracking()
-            .Where(s => s.CodigoPedido == codigo)
-            .OrderBy(s => s.Id)
-            .Select(s => new
-            {
-                s.Id, s.Fecha, s.Estado, s.ClienteId, s.Observaciones, s.ComprobanteArchivo, s.ComprobanteFecha, s.MotivoRechazo,
-                Cliente = s.Cliente.Nombre, s.Cliente.Telefono, s.Cliente.Direccion, s.Cliente.Email, s.Cliente.Documento,
-                s.ProductoId, Producto = s.Producto.Nombre, s.Producto.ImagenUrl, s.Cantidad, s.PrecioUnitario, s.Total
-            })
-            .ToListAsync(ct);
+        var pedido = await db.ObtenerPedidoAsync(codigo, ct)
+            ?? throw new ReglaNegocioException("El pedido no existe.", StatusCodes.Status404NotFound);
 
-        if (filas.Count == 0)
-            throw new ReglaNegocioException("El pedido no existe.", StatusCodes.Status404NotFound);
-
-        var p = filas[0];
         if (!User.IsInRole(Roles.Admin))
         {
             var usuarioId = User.ObtenerUsuarioId();
             var clienteId = await db.Usuarios.Where(u => u.Id == usuarioId).Select(u => u.ClienteId).FirstOrDefaultAsync(ct);
-            if (clienteId != p.ClienteId)
+            if (clienteId != pedido.ClienteId)
                 throw new ReglaNegocioException("No podés ver pedidos de otra cuenta.", StatusCodes.Status403Forbidden);
         }
 
-        var items = filas.Select(f => new PedidoItemDto(f.Id, f.ProductoId, f.Producto, f.ImagenUrl, f.Cantidad, f.PrecioUnitario, f.Total)).ToList();
-        var pedido = new PedidoDto(codigo, p.Fecha, p.Estado, EstadosPedido.Texto(p.Estado), p.ClienteId, p.Cliente, p.Telefono, p.Direccion,
-            items.Sum(i => i.Subtotal), items.Sum(i => i.Cantidad), p.Observaciones,
-            p.ComprobanteArchivo is not null, p.ComprobanteFecha, p.MotivoRechazo, items);
+        var cliente = await db.Clientes.AsNoTracking()
+            .Where(c => c.Id == pedido.ClienteId)
+            .Select(c => new { c.Email, c.Documento })
+            .FirstAsync(ct);
 
-        return (pdf.ComprobantePedido(pedido, p.Email, p.Documento), pedido);
+        return (pdf.ComprobantePedido(pedido, cliente.Email, cliente.Documento), pedido);
     }
 
     private static DateTime HoyAr() => DateTime.UtcNow.AddHours(-3).Date;

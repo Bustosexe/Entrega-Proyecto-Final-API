@@ -28,7 +28,7 @@ public static class DbSeeder
                 NombreUsuario = config["Seed:AdminUsuario"] ?? "admin",
                 NombreCompleto = "Administrador",
                 Email = config["Seed:AdminEmail"] ?? "admin@techhub.local",
-                Rol = Roles.Admin
+                RolId = Roles.AdminId
             };
             admin.PasswordHash = hasher.HashPassword(admin, config["Seed:AdminPassword"] ?? "Admin123!");
 

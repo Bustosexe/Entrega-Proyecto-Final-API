@@ -20,21 +20,23 @@ TechHub.App  (app Android, .NET MAUI)  ──HTTP + JWT──►  TechHub.Api  (
 
 | Perfil | Login | Qué puede hacer |
 |---|---|---|
-| **Visitante** | No | Ver el catálogo con fotos, buscar, filtrar por categoría y ordenar por precio. Ver el detalle de cada producto y armar el carrito. |
+| **Visitante** | No | Ver el catálogo con fotos, buscar, filtrar por categoría, marca y precio, y ordenar. Ver el detalle de cada producto y armar el carrito. |
 | **Comprador** | Sí (se registra desde la app) | Lo mismo que el visitante, más confirmar compras, ver *Mis pedidos*, cancelar un pedido pendiente y editar su perfil. |
-| **Administrador** | Sí | Panel con indicadores, gestión de pedidos (confirmar, entregar, cancelar), productos con foto, compras a proveedores (suman stock), categorías, proveedores, clientes y usuarios. |
+| **Administrador** | Sí | Panel con indicadores, gestión de pedidos (confirmar, entregar, cancelar) con historial, productos con foto, compras a proveedores por factura con varios productos (suman stock), categorías, marcas, proveedores, clientes y usuarios. |
 
 ### Funciones destacadas de la app
 
 - **Compra ágil:** botón **+** en cada tarjeta del catálogo, contador de unidades en la pestaña *Carrito (n)* y avisos breves (toast) en lugar de ventanas emergentes.
-- **Catálogo:** carrusel de **más vendidos**, filtro por categoría y por **rango de precio**, orden por nombre, precio, más vendidos o novedades, y sección **"También te puede interesar"** en el detalle.
-- **Seguimiento de pedidos:** **línea de tiempo** Pendiente → Confirmado → Entregado y botón **"Volver a comprar"**, que carga el carrito con el stock y los precios actuales.
-- **Panel del admin:** **gráfico de barras** con la facturación de los últimos 7 días (dibujado con Microsoft.Maui.Graphics) y **ranking de productos más vendidos**.
+- **Catálogo:** carrusel de **más vendidos**, filtro por categoría, por **marca** y por **rango de precio**, orden por nombre, precio, más vendidos o novedades, y sección **"También te puede interesar"** en el detalle.
+- **Seguimiento de pedidos:** **línea de tiempo** con la fecha y hora real de cada paso, **historial** de todos los cambios de estado (quién, cuándo y por qué) y botón **"Volver a comprar"**, que carga el carrito con el stock y los precios actuales.
+- **Panel del admin:** **gráfico de barras** con la facturación de los últimos 7 días (dibujado con Microsoft.Maui.Graphics), **ranking de productos más vendidos** y **ventas por marca**.
+- **Compras por factura:** el admin carga una factura de proveedor con varios productos, ve el total antes de guardar y la lista muestra cada factura con sus renglones. Una misma factura no se puede cargar dos veces.
+- **Marcas:** se eligen de una lista al cargar un producto (con alta rápida "+ Nueva") y se gestionan como las categorías.
 
 - **Pago por transferencia:** el carrito muestra el alias, y el pedido trae los datos para transferir con botón **copiar**. El comprador **sube el comprobante** (foto o PDF) desde la app y el admin lo revisa: **aprueba** o **rechaza** el pago, indicando el motivo.
 - **Reportes en PDF:** comprobante de pedido, **inventario valorizado** y **ventas por período**. Se pueden ver, compartir (WhatsApp, Drive…) o **enviar por email** desde Gmail.
 - **Emails automáticos:** al crear el pedido, con los datos de transferencia, y al confirmar el pago, con el comprobante en PDF adjunto.
-- **Diseño claro minimalista:** fondo blanco, botones negros tipo píldora, tarjetas con borde fino y tipografía grande.
+- **Diseño Índigo:** fondo claro, color principal índigo, botones redondeados, tarjetas con borde fino y alertas al estilo SweetAlert.
 
 ### Ciclo de un pedido (pago por transferencia)
 
@@ -78,21 +80,20 @@ Al iniciar, la API aplica las migraciones y crea el administrador inicial **admi
 
 Con `"Seed:DatosDemo": true` (activado por defecto), la API carga sola al arrancar:
 - 2 proveedores.
-- 17 productos con foto (procesadores, placas de video, motherboards, RAM, SSD y fuentes), con stock cargado mediante compras (Ingresos). Uno queda sin stock y varios con stock bajo, para mostrar las alertas.
-- Un comprador de prueba, **comprador@techhub.local / Comprador123!**, con 3 pedidos: uno entregado, uno confirmado y uno pendiente.
+- 17 productos con foto y sus marcas (procesadores, placas de video, motherboards, RAM, SSD y fuentes), con stock cargado mediante 2 compras (facturas) a proveedores. Uno queda sin stock y varios con stock bajo, para mostrar las alertas.
+- Un comprador de prueba, **comprador@techhub.local / Comprador123!**, con 3 pedidos (entregado, confirmado y pendiente) y su historial de estados.
 
 La carga es idempotente: solo agrega los productos que todavía no existen (por nombre o por imagen). Las fotos de producto están en `wwwroot/demo` (PNG de 600×600 con fondo blanco) y se usan solo con fines académicos. Si se reemplazan, hay que subir `VersionFotosDemo` en `TechHub.App/Config/ApiConfig.cs` para que la app no muestre las anteriores desde la caché. Los precios son orientativos.
 
-### Migración de pagos y comprobantes
+### Migraciones
 
-Esta versión agrega a `Salidas` las columnas `ComprobanteArchivo`, `ComprobanteFecha` y `MotivoRechazo`:
+| Migración | Qué hace |
+|---|---|
+| `InitialCreate` | Primer esquema (7 tablas). |
+| `PagosYComprobantes` | Comprobante de pago y motivo de rechazo. |
+| `Normalizacion` | Pasa a **13 tablas en 3FN** (Marcas, Roles, Compras + DetallesCompra, Pedidos + DetallesPedido, EstadosPedido, HistorialPedidos). Mueve los datos existentes a las tablas nuevas **sin perder nada** y elimina Ingresos y Salidas. |
 
-```bash
-cd TechHub.Api
-dotnet ef migrations add PagosYComprobantes
-```
-
-La API aplica la migración sola al iniciar.
+La API aplica las migraciones pendientes sola al iniciar (también en MonsterASP).
 
 ### Configurar pagos y Gmail
 
@@ -130,11 +131,13 @@ Para tener las dos en marcha a la vez: *clic derecho en la solución → Configu
 
 ```
 TechHub.Api/
-├── Controllers/   Auth, Productos, Categorias, Proveedores, Clientes, Ingresos, Pedidos, Usuarios, Dashboard
-├── Models/        Entidades (7 tablas) + Roles + EstadosPedido
+├── Controllers/   Auth, Productos, Categorias, Marcas, Proveedores, Clientes, Compras, Pedidos, Usuarios,
+│                  Referencias (roles y estados), Pagos, Reportes, Dashboard
+├── Models/        Entidades (13 tablas) + valores fijos de Roles y EstadosPedido
 ├── DTOs/          Contratos de entrada/salida con validaciones
 ├── Data/          AppDbContext (Fluent API, índices, CHECK, relaciones) y DbSeeder
-├── Services/      TokenService (JWT), MovimientoService (stock transaccional), ImagenService
+├── Services/      TokenService (JWT), MovimientoService (stock transaccional + historial), PedidoConsultas,
+│                  ImagenService, ComprobanteService, ReportesPdfService, EmailService
 ├── Common/        Paginación, manejo global de errores (ProblemDetails)
 └── wwwroot/uploads  Fotos de productos
 
@@ -143,25 +146,34 @@ TechHub.App/
 ├── Models/        DTOs del lado cliente + formato de moneda/fecha
 ├── Services/      ApiClient (HTTP + Bearer), SesionService (SecureStorage), CarritoService
 ├── ViewModels/    MVVM: Tienda, Admin y ABM genérico
-├── Views/         17 pantallas XAML
+├── Views/         19 pantallas XAML
 └── AppShell       Dos barras de pestañas: tienda (visitante/comprador) y admin
 ```
 
-### Modelo de datos (7 tablas)
+### Modelo de datos (13 tablas, 3ª forma normal)
+
+Diagrama: [docs/DER_TechHub.png](docs/DER_TechHub.png).
 
 | Tabla | Descripción | Relaciones |
 |---|---|---|
-| Categorias | Clasificación del stock | 1 → N Productos |
-| Productos | Componente: precio, stock, stock mínimo, imagen | N → 1 Categoría |
-| Proveedores | Distribuidores mayoristas (CUIT único) | 1 → N Ingresos |
-| Clientes | Personas o empresas (DNI/CUIT único) | 1 → N Salidas · 1 → 0..1 Usuario |
-| Ingresos | Compra a proveedor: una fila por producto | N → 1 Producto, Proveedor, Usuario |
-| Salidas | Venta: una fila por producto, agrupadas por `CodigoPedido` con `Estado` | N → 1 Producto, Cliente, Usuario |
-| Usuarios | Cuentas: Admin o Comprador, contraseña hasheada | 0..1 → 1 Cliente · 1 → N Ingresos y Salidas |
+| Categorias | Rubros del catálogo (nombre único) | 1 → N Productos |
+| Marcas | Fabricantes: AMD, Intel, ASUS... (nombre único) | 1 → N Productos |
+| Productos | Componente: precio, stock, stock mínimo, imagen | N → 1 Categoría y Marca |
+| Proveedores | Mayoristas (CUIT único) | 1 → N Compras |
+| Clientes | Personas o empresas (DNI/CUIT único) | 1 → N Pedidos · 1 → 0..1 Usuario |
+| Roles | Referencia: Admin, Comprador | 1 → N Usuarios |
+| Usuarios | Cuentas con contraseña hasheada | N → 1 Rol · 0..1 → 1 Cliente · 1 → N Compras, Pedidos e Historial |
+| Compras | Cabecera: factura de un proveedor (número único por proveedor) | N → 1 Proveedor, Usuario · 1 → N DetallesCompra |
+| DetallesCompra | Renglón: producto, cantidad y costo (suma stock) | N → 1 Compra, Producto |
+| EstadosPedido | Referencia: Pendiente, EnRevision, Confirmado, Entregado, Cancelado | 1 → N Pedidos e Historial |
+| Pedidos | Cabecera: código, cliente, estado, comprobante | N → 1 Cliente, Usuario, Estado · 1 → N Detalles e Historial |
+| DetallesPedido | Renglón: producto, cantidad y precio congelado (resta stock) | N → 1 Pedido, Producto |
+| HistorialPedidos | Cada cambio de estado: fecha, usuario y comentario | N → 1 Pedido, Estado · N → 0..1 Usuario |
 
 Decisiones de diseño:
-- **Precio congelado:** `Salidas.PrecioUnitario` guarda el precio del momento de la compra, así un cambio de precio no altera el historial.
-- **Trazabilidad:** el stock no se edita a mano. Sube con Ingresos y baja con Salidas.
+- **3FN:** los datos del pedido (cliente, estado, comprobante) viven en la cabecera y no se repiten en cada renglón; marca, rol y estado son tablas de referencia en lugar de texto repetido. Los totales y subtotales no se guardan: se calculan como `Cantidad × Precio`.
+- **Precio congelado:** `DetallesPedido.PrecioUnitario` guarda el precio del momento de la compra, así un cambio de precio no altera el historial.
+- **Trazabilidad:** el stock no se edita a mano. Sube con DetallesCompra y baja con DetallesPedido. Cada cambio de estado queda en HistorialPedidos (quién aprobó o rechazó un pago, cuándo y por qué).
 - **Stock nunca negativo:** cada línea del pedido ejecuta `UPDATE ... SET Stock = Stock - @n WHERE Id = @id AND Stock >= @n` dentro de una transacción. Si un producto no alcanza, se revierte todo el pedido y la API responde `409 Conflict`. Además, la base tiene `CHECK (Stock >= 0)`.
 - **Bajas lógicas:** productos, clientes, proveedores y usuarios se desactivan, no se borran (`ON DELETE RESTRICT`).
 
@@ -171,20 +183,21 @@ Decisiones de diseño:
 - **En la app,** el token se guarda en `SecureStorage` (Android Keystore) y se envía como `Authorization: Bearer ...`.
 - **Contraseñas** hasheadas con `PasswordHasher` de ASP.NET Core Identity (PBKDF2 con salt).
 - **401** = sin token o token inválido/vencido (la app cierra la sesión). **403** = token válido pero rol insuficiente (por ejemplo, un comprador que pide el dashboard).
-- **Tráfico:** HTTP sin cifrar está permitido solo hacia `10.0.2.2` (emulador). Todo lo demás exige HTTPS (`network_security_config.xml`).
+- **Tráfico:** HTTP sin cifrar está permitido solo hacia `10.0.2.2` (emulador) y, mientras MonsterASP no active HTTPS en el plan gratuito, hacia `apiintegrador.runasp.net`. Todo lo demás exige HTTPS (`network_security_config.xml`).
 
 ### Permisos por endpoint
 
 | Recurso | Visitante | Comprador | Admin |
 |---|---|---|---|
-| GET productos (filtros: `buscar`, `categoriaId`, `precioMin`, `precioMax`, `orden=nombre\|precio\|precio_desc\|vendidos\|nuevos`), `/api/productos/{id}/relacionados`, categorías | ✅ | ✅ | ✅ (más inactivos) |
+| GET productos (filtros: `buscar`, `categoriaId`, `marcaId`, `precioMin`, `precioMax`, `orden=nombre\|precio\|precio_desc\|vendidos\|nuevos`), `/api/productos/{id}/relacionados`, categorías, marcas, `/api/estados-pedido` | ✅ | ✅ | ✅ (más inactivos) |
 | POST `/api/auth/registro`, `/api/auth/login` | ✅ | — | — |
 | GET/PUT `/api/auth/perfil` | — | ✅ | ✅ |
 | POST `/api/pedidos` | — | ✅ (queda Pendiente) | ✅ (venta en local, requiere `clienteId`) |
 | GET `/api/pedidos/mios`, POST `/{codigo}/cancelar` | — | ✅ | — |
-| GET `/api/pedidos`, PUT `/{codigo}/estado` | — | — | ✅ |
-| Productos (ABM e imagen), categorías, proveedores, clientes, ingresos, usuarios | — | — | ✅ |
-| Dashboard: `/resumen`, `/ventas-diarias?dias=7`, `/top-productos?cantidad=5` | — | — | ✅ |
+| GET `/api/pedidos`, PUT `/{codigo}/estado` `{ estado, comentario }` | — | — | ✅ |
+| Productos (ABM e imagen), categorías, marcas, proveedores, clientes, usuarios, GET `/api/roles` | — | — | ✅ |
+| GET/POST `/api/compras` (factura con `items[]`: `productoId`, `cantidad`, `costoUnitario`) | — | — | ✅ |
+| Dashboard: `/resumen`, `/ventas-diarias?dias=7`, `/top-productos?cantidad=5`, `/ventas-por-marca` | — | — | ✅ |
 | GET `/api/pagos/transferencia` (alias, CBU, titular) | ✅ | ✅ | ✅ |
 | POST `/api/pedidos/{codigo}/comprobante` (multipart, campo `archivo`) | — | ✅ (su pedido) | — |
 | GET `/api/pedidos/{codigo}/comprobante` | — | ✅ (su pedido) | ✅ |

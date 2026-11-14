@@ -6,7 +6,8 @@ namespace TechHub.Api.Data;
 
 /// <summary>
 /// Datos de demostración para la presentación: proveedores, un catálogo de 17 componentes con foto,
-/// sus compras iniciales (Ingresos) y un comprador de prueba con pedidos.
+/// sus marcas, las compras iniciales a proveedores (Compras + DetallesCompra) y un comprador de prueba
+/// con pedidos en distintos estados (Pedidos + DetallesPedido + HistorialPedidos).
 /// Es idempotente: solo agrega los productos que todavía no existen (por nombre o por imagen).
 /// Se activa con "Seed:DatosDemo": true en appsettings.json.
 /// Los precios son orientativos (ARS) y las fotos de producto están en wwwroot/demo.
@@ -61,7 +62,7 @@ public static class DemoSeeder
 
     public static async Task CargarAsync(AppDbContext db, IPasswordHasher<Usuario> hasher, ILogger logger)
     {
-        var admin = await db.Usuarios.Where(u => u.Rol == Roles.Admin).OrderBy(u => u.Id).FirstOrDefaultAsync();
+        var admin = await db.Usuarios.Where(u => u.RolId == Roles.AdminId).OrderBy(u => u.Id).FirstOrDefaultAsync();
         if (admin is null) return;
 
         // Se considera que un producto de demo ya existe si coincide el nombre o la imagen
@@ -83,11 +84,30 @@ public static class DemoSeeder
                 "pedidos@importadorademo.com.ar", "011 4555-9876", "Av. Rivadavia 5678, CABA")
         };
 
-        // ---------- Productos + compra inicial (el stock entra por un Ingreso: trazabilidad) ----------
+        // ---------- Marcas (se crean las que falten) ----------
+        var marcas = await db.Marcas.ToDictionaryAsync(m => m.Nombre, StringComparer.OrdinalIgnoreCase);
+        foreach (var nombreMarca in pendientes.Select(d => d.Marca).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (marcas.ContainsKey(nombreMarca)) continue;
+            var marca = new Marca { Nombre = nombreMarca };
+            db.Marcas.Add(marca);
+            marcas[nombreMarca] = marca;
+        }
+
+        // ---------- Productos + compras iniciales (el stock entra por una Compra: trazabilidad) ----------
         var categorias = await db.Categorias.ToDictionaryAsync(c => c.Nombre, StringComparer.OrdinalIgnoreCase);
         var creados = new List<Producto>();
         var fechaCompra = DateTime.UtcNow.AddDays(-10);
-        var n = 0;
+
+        // Una factura por proveedor: procesadores, motherboards y fuentes a uno; el resto al otro.
+        var compras = proveedores.Select((prov, k) => new Compra
+        {
+            Proveedor = prov,
+            Usuario = admin,
+            Fecha = fechaCompra.AddMinutes(k * 30),
+            NumeroComprobante = $"A-0001-{Random.Shared.Next(10_000_000, 99_999_999)}",
+            Observaciones = "Carga inicial (datos de demostración)"
+        }).ToList();
 
         foreach (var d in pendientes)
         {
@@ -96,7 +116,7 @@ public static class DemoSeeder
             var producto = new Producto
             {
                 Nombre = d.Nombre,
-                Marca = d.Marca,
+                Marca = marcas[d.Marca],
                 Descripcion = d.Descripcion,
                 Precio = d.Precio,
                 Stock = d.Stock,
@@ -110,21 +130,13 @@ public static class DemoSeeder
 
             if (d.Stock > 0)
             {
-                n++;
-                db.Ingresos.Add(new Ingreso
-                {
-                    Producto = producto,
-                    Proveedor = proveedores[n % proveedores.Count],
-                    Usuario = admin,
-                    Cantidad = d.Stock,
-                    CostoUnitario = d.Costo,
-                    Total = d.Stock * d.Costo,
-                    NumeroComprobante = $"A-0001-{1000 + n:D8}",
-                    Observaciones = "Carga inicial (datos de demostración)",
-                    Fecha = fechaCompra.AddMinutes(n)
-                });
+                var compra = d.Categoria is "Procesadores" or "Motherboards" or "Fuentes de Poder" ? compras[0] : compras[1];
+                compra.Detalles.Add(new DetalleCompra { Producto = producto, Cantidad = d.Stock, CostoUnitario = d.Costo });
             }
         }
+
+        foreach (var compra in compras.Where(c => c.Detalles.Count > 0))
+            db.Compras.Add(compra);
 
         // ---------- Comprador de prueba con pedidos (para "Mis pedidos" y el panel) ----------
         const string emailDemo = "comprador@techhub.local";
@@ -146,7 +158,7 @@ public static class DemoSeeder
                 NombreUsuario = emailDemo,
                 NombreCompleto = cliente.Nombre,
                 Email = emailDemo,
-                Rol = Roles.Comprador,
+                RolId = Roles.CompradorId,
                 Cliente = cliente
             };
             comprador.PasswordHash = hasher.HashPassword(comprador, "Comprador123!");
@@ -154,11 +166,11 @@ public static class DemoSeeder
 
             Producto? P(string nombre) => creados.FirstOrDefault(p => p.Nombre == nombre);
 
-            AgregarPedido(db, "P-DEMO-0001", EstadosPedido.Entregado, DateTime.UtcNow.AddDays(-6), cliente, comprador,
-                "Retiro por el local", (P("AMD Ryzen 5 7600"), 1), (P("B650 Gaming Plus WiFi"), 1), (P("Fury Beast DDR5 16GB (2x8) 6000MHz"), 1));
-            AgregarPedido(db, "P-DEMO-0002", EstadosPedido.Confirmado, DateTime.UtcNow.AddDays(-1), cliente, comprador,
-                "Envío a domicilio", (P("GeForce RTX 4060 8GB Dual"), 1));
-            AgregarPedido(db, "P-DEMO-0003", EstadosPedido.Pendiente, DateTime.UtcNow.AddHours(-2), cliente, comprador,
+            AgregarPedido(db, "P-DEMO-0001", EstadosPedido.Entregado, DateTime.UtcNow.AddDays(-6), cliente, comprador, admin,
+                "Retiro por el local", (P("AMD Ryzen 5 7600"), 1), (P("B650M Gaming Plus WiFi"), 1), (P("Fury Beast DDR5 16GB (2x8) 6000MHz"), 1));
+            AgregarPedido(db, "P-DEMO-0002", EstadosPedido.Confirmado, DateTime.UtcNow.AddDays(-1), cliente, comprador, admin,
+                "Envío a domicilio", (P("GeForce RTX 4060 8GB Ventus 2X Black OC"), 1));
+            AgregarPedido(db, "P-DEMO-0003", EstadosPedido.Pendiente, DateTime.UtcNow.AddHours(-2), cliente, comprador, admin,
                 null, (P("SSD NV2 1TB NVMe M.2"), 2), (P("Fuente 600 W1 600W 80+"), 1));
         }
 
@@ -176,27 +188,44 @@ public static class DemoSeeder
         return p;
     }
 
-    /// <summary>Crea las Salidas de un pedido y descuenta el stock (solo con productos recién creados).</summary>
-    private static void AgregarPedido(AppDbContext db, string codigo, string estado, DateTime fecha, Cliente cliente,
-        Usuario usuario, string? observaciones, params (Producto? Producto, int Cantidad)[] lineas)
+    /// <summary>
+    /// Crea un pedido de demo (cabecera + renglones) con su historial de estados y descuenta el stock
+    /// (solo con productos recién creados).
+    /// </summary>
+    private static void AgregarPedido(AppDbContext db, string codigo, string estadoFinal, DateTime fecha, Cliente cliente,
+        Usuario comprador, Usuario admin, string? observaciones, params (Producto? Producto, int Cantidad)[] lineas)
     {
+        var pedido = new Pedido
+        {
+            Codigo = codigo,
+            Fecha = fecha,
+            Cliente = cliente,
+            Usuario = comprador,
+            EstadoId = EstadosPedido.Id(estadoFinal),
+            Observaciones = observaciones
+        };
+
         foreach (var (producto, cantidad) in lineas)
         {
             if (producto is null || producto.Stock < cantidad) continue;
             producto.Stock -= cantidad;
-            db.Salidas.Add(new Salida
-            {
-                CodigoPedido = codigo,
-                Estado = estado,
-                Fecha = fecha,
-                Producto = producto,
-                Cliente = cliente,
-                Usuario = usuario,
-                Cantidad = cantidad,
-                PrecioUnitario = producto.Precio,
-                Total = cantidad * producto.Precio,
-                Observaciones = observaciones
-            });
+            pedido.Detalles.Add(new DetallePedido { Producto = producto, Cantidad = cantidad, PrecioUnitario = producto.Precio });
         }
+        if (pedido.Detalles.Count == 0) return;
+
+        // Historial coherente con el estado final: así la línea de tiempo muestra fechas reales.
+        void Paso(int estadoId, DateTime cuando, Usuario quien, string? comentario = null) =>
+            pedido.Historial.Add(new HistorialPedido { EstadoId = estadoId, Fecha = cuando, Usuario = quien, Comentario = comentario });
+
+        Paso(EstadosPedido.PendienteId, fecha, comprador);
+        if (estadoFinal is EstadosPedido.Confirmado or EstadosPedido.Entregado)
+        {
+            Paso(EstadosPedido.EnRevisionId, fecha.AddHours(1), comprador);
+            Paso(EstadosPedido.ConfirmadoId, fecha.AddHours(3), admin, "Transferencia acreditada");
+        }
+        if (estadoFinal == EstadosPedido.Entregado)
+            Paso(EstadosPedido.EntregadoId, fecha.AddDays(1), admin, "Retirado por el local");
+
+        db.Pedidos.Add(pedido);
     }
 }

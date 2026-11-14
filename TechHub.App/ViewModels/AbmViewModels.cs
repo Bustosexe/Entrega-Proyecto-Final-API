@@ -140,6 +140,30 @@ public static class Abms
             ]
         },
 
+        "marcas" => new AbmDefinicion
+        {
+            Titulo = "Marcas",
+            Singular = "marca",
+            Endpoint = "api/marcas",
+            TextoBorrar = "Eliminar",
+            PuedeBorrar = i => I(i.Datos, "cantidadProductos") == 0,
+            Mapear = e => new AbmItem
+            {
+                Id = I(e, "id"),
+                Titulo = S(e, "nombre"),
+                Subtitulo = I(e, "cantidadProductos") == 1 ? "1 producto activo" : $"{I(e, "cantidadProductos")} productos activos",
+                Activo = B(e, "activo"),
+                Etiqueta = B(e, "activo") ? "" : "INACTIVA",
+                EtiquetaColor = Paleta.Gris,
+                Datos = e
+            },
+            Campos = d =>
+            [
+                Campo("nombre", "Nombre", d, requerido: true, max: 80),
+                Campo("activo", "Activa", d, TipoCampo.Switch)
+            ]
+        },
+
         "proveedores" => new AbmDefinicion
         {
             Titulo = "Proveedores",

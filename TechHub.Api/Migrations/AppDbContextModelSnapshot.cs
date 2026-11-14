@@ -135,20 +135,13 @@ namespace TechHub.Api.Migrations
                     b.ToTable("Clientes", (string)null);
                 });
 
-            modelBuilder.Entity("TechHub.Api.Models.Ingreso", b =>
+            modelBuilder.Entity("TechHub.Api.Models.Compra", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Cantidad")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("CostoUnitario")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("datetime2");
@@ -161,15 +154,8 @@ namespace TechHub.Api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("ProductoId")
-                        .HasColumnType("int");
-
                     b.Property<int>("ProveedorId")
                         .HasColumnType("int");
-
-                    b.Property<decimal>("Total")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("UsuarioId")
                         .HasColumnType("int");
@@ -178,16 +164,248 @@ namespace TechHub.Api.Migrations
 
                     b.HasIndex("Fecha");
 
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("ProveedorId", "NumeroComprobante")
+                        .IsUnique()
+                        .HasFilter("[NumeroComprobante] IS NOT NULL");
+
+                    b.ToTable("Compras", (string)null);
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.DetalleCompra", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Cantidad")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompraId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("CostoUnitario")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ProductoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
                     b.HasIndex("ProductoId");
 
-                    b.HasIndex("ProveedorId");
+                    b.HasIndex("CompraId", "ProductoId")
+                        .IsUnique();
+
+                    b.ToTable("DetallesCompra", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DetallesCompra_Cantidad", "[Cantidad] > 0");
+
+                            t.HasCheckConstraint("CK_DetallesCompra_Costo", "[CostoUnitario] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.DetallePedido", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Cantidad")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PedidoId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PrecioUnitario")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ProductoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductoId");
+
+                    b.HasIndex("PedidoId", "ProductoId")
+                        .IsUnique();
+
+                    b.ToTable("DetallesPedido", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DetallesPedido_Cantidad", "[Cantidad] > 0");
+
+                            t.HasCheckConstraint("CK_DetallesPedido_Precio", "[PrecioUnitario] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.EstadoPedido", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.ToTable("EstadosPedido", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Codigo = "Pendiente",
+                            Nombre = "Esperando pago"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Codigo = "EnRevision",
+                            Nombre = "Pago en revisión"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Codigo = "Confirmado",
+                            Nombre = "Pago confirmado"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Codigo = "Entregado",
+                            Nombre = "Entregado"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Codigo = "Cancelado",
+                            Nombre = "Cancelado"
+                        });
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.HistorialPedido", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comentario")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("EstadoId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PedidoId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EstadoId");
 
                     b.HasIndex("UsuarioId");
 
-                    b.ToTable("Ingresos", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_Ingresos_Cantidad", "[Cantidad] > 0");
-                        });
+                    b.HasIndex("PedidoId", "Fecha");
+
+                    b.ToTable("HistorialPedidos", (string)null);
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.Marca", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("Marcas", (string)null);
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.Pedido", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClienteId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ComprobanteArchivo")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("EstadoId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.HasIndex("EstadoId");
+
+                    b.HasIndex("Fecha");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("Pedidos", (string)null);
                 });
 
             modelBuilder.Entity("TechHub.Api.Models.Producto", b =>
@@ -215,10 +433,8 @@ namespace TechHub.Api.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<string>("Marca")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
+                    b.Property<int>("MarcaId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -238,6 +454,8 @@ namespace TechHub.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CategoriaId");
+
+                    b.HasIndex("MarcaId");
 
                     b.HasIndex("Nombre");
 
@@ -290,79 +508,39 @@ namespace TechHub.Api.Migrations
                     b.ToTable("Proveedores", (string)null);
                 });
 
-            modelBuilder.Entity("TechHub.Api.Models.Salida", b =>
+            modelBuilder.Entity("TechHub.Api.Models.Rol", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
-                    b.Property<int>("Cantidad")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ClienteId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("CodigoPedido")
+                    b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("ComprobanteArchivo")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime?>("ComprobanteFecha")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Estado")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("MotivoRechazo")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<string>("Observaciones")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<decimal>("PrecioUnitario")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("ProductoId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Total")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClienteId");
+                    b.HasIndex("Nombre")
+                        .IsUnique();
 
-                    b.HasIndex("CodigoPedido");
+                    b.ToTable("Roles", (string)null);
 
-                    b.HasIndex("Estado");
-
-                    b.HasIndex("Fecha");
-
-                    b.HasIndex("ProductoId");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.ToTable("Salidas", null, t =>
+                    b.HasData(
+                        new
                         {
-                            t.HasCheckConstraint("CK_Salidas_Cantidad", "[Cantidad] > 0");
+                            Id = 1,
+                            Descripcion = "Personal de la tienda: gestiona catálogo, stock, pedidos y reportes",
+                            Nombre = "Admin"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Descripcion = "Cliente registrado desde la app: compra y sigue sus pedidos",
+                            Nombre = "Comprador"
                         });
                 });
 
@@ -403,10 +581,8 @@ namespace TechHub.Api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("Rol")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<int>("RolId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -420,32 +596,117 @@ namespace TechHub.Api.Migrations
                     b.HasIndex("NombreUsuario")
                         .IsUnique();
 
+                    b.HasIndex("RolId");
+
                     b.ToTable("Usuarios", (string)null);
                 });
 
-            modelBuilder.Entity("TechHub.Api.Models.Ingreso", b =>
+            modelBuilder.Entity("TechHub.Api.Models.Compra", b =>
                 {
-                    b.HasOne("TechHub.Api.Models.Producto", "Producto")
-                        .WithMany("Ingresos")
-                        .HasForeignKey("ProductoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("TechHub.Api.Models.Proveedor", "Proveedor")
-                        .WithMany("Ingresos")
+                        .WithMany("Compras")
                         .HasForeignKey("ProveedorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("TechHub.Api.Models.Usuario", "Usuario")
-                        .WithMany("Ingresos")
+                        .WithMany("Compras")
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Producto");
-
                     b.Navigation("Proveedor");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.DetalleCompra", b =>
+                {
+                    b.HasOne("TechHub.Api.Models.Compra", "Compra")
+                        .WithMany("Detalles")
+                        .HasForeignKey("CompraId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TechHub.Api.Models.Producto", "Producto")
+                        .WithMany("DetallesCompra")
+                        .HasForeignKey("ProductoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Compra");
+
+                    b.Navigation("Producto");
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.DetallePedido", b =>
+                {
+                    b.HasOne("TechHub.Api.Models.Pedido", "Pedido")
+                        .WithMany("Detalles")
+                        .HasForeignKey("PedidoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TechHub.Api.Models.Producto", "Producto")
+                        .WithMany("DetallesPedido")
+                        .HasForeignKey("ProductoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Pedido");
+
+                    b.Navigation("Producto");
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.HistorialPedido", b =>
+                {
+                    b.HasOne("TechHub.Api.Models.EstadoPedido", "Estado")
+                        .WithMany("Historial")
+                        .HasForeignKey("EstadoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TechHub.Api.Models.Pedido", "Pedido")
+                        .WithMany("Historial")
+                        .HasForeignKey("PedidoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TechHub.Api.Models.Usuario", "Usuario")
+                        .WithMany("CambiosDeEstado")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Estado");
+
+                    b.Navigation("Pedido");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.Pedido", b =>
+                {
+                    b.HasOne("TechHub.Api.Models.Cliente", "Cliente")
+                        .WithMany("Pedidos")
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TechHub.Api.Models.EstadoPedido", "Estado")
+                        .WithMany("Pedidos")
+                        .HasForeignKey("EstadoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TechHub.Api.Models.Usuario", "Usuario")
+                        .WithMany("Pedidos")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Cliente");
+
+                    b.Navigation("Estado");
 
                     b.Navigation("Usuario");
                 });
@@ -458,34 +719,15 @@ namespace TechHub.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("TechHub.Api.Models.Marca", "Marca")
+                        .WithMany("Productos")
+                        .HasForeignKey("MarcaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Categoria");
-                });
 
-            modelBuilder.Entity("TechHub.Api.Models.Salida", b =>
-                {
-                    b.HasOne("TechHub.Api.Models.Cliente", "Cliente")
-                        .WithMany("Salidas")
-                        .HasForeignKey("ClienteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TechHub.Api.Models.Producto", "Producto")
-                        .WithMany("Salidas")
-                        .HasForeignKey("ProductoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TechHub.Api.Models.Usuario", "Usuario")
-                        .WithMany("Salidas")
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Cliente");
-
-                    b.Navigation("Producto");
-
-                    b.Navigation("Usuario");
+                    b.Navigation("Marca");
                 });
 
             modelBuilder.Entity("TechHub.Api.Models.Usuario", b =>
@@ -495,7 +737,15 @@ namespace TechHub.Api.Migrations
                         .HasForeignKey("TechHub.Api.Models.Usuario", "ClienteId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("TechHub.Api.Models.Rol", "Rol")
+                        .WithMany("Usuarios")
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Cliente");
+
+                    b.Navigation("Rol");
                 });
 
             modelBuilder.Entity("TechHub.Api.Models.Categoria", b =>
@@ -505,28 +755,59 @@ namespace TechHub.Api.Migrations
 
             modelBuilder.Entity("TechHub.Api.Models.Cliente", b =>
                 {
-                    b.Navigation("Salidas");
+                    b.Navigation("Pedidos");
 
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("TechHub.Api.Models.Compra", b =>
+                {
+                    b.Navigation("Detalles");
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.EstadoPedido", b =>
+                {
+                    b.Navigation("Historial");
+
+                    b.Navigation("Pedidos");
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.Marca", b =>
+                {
+                    b.Navigation("Productos");
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.Pedido", b =>
+                {
+                    b.Navigation("Detalles");
+
+                    b.Navigation("Historial");
+                });
+
             modelBuilder.Entity("TechHub.Api.Models.Producto", b =>
                 {
-                    b.Navigation("Ingresos");
+                    b.Navigation("DetallesCompra");
 
-                    b.Navigation("Salidas");
+                    b.Navigation("DetallesPedido");
                 });
 
             modelBuilder.Entity("TechHub.Api.Models.Proveedor", b =>
                 {
-                    b.Navigation("Ingresos");
+                    b.Navigation("Compras");
+                });
+
+            modelBuilder.Entity("TechHub.Api.Models.Rol", b =>
+                {
+                    b.Navigation("Usuarios");
                 });
 
             modelBuilder.Entity("TechHub.Api.Models.Usuario", b =>
                 {
-                    b.Navigation("Ingresos");
+                    b.Navigation("CambiosDeEstado");
 
-                    b.Navigation("Salidas");
+                    b.Navigation("Compras");
+
+                    b.Navigation("Pedidos");
                 });
 #pragma warning restore 612, 618
         }

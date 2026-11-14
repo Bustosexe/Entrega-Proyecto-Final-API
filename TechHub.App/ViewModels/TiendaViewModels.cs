@@ -18,6 +18,23 @@ public partial class CategoriaFiltro : ObservableObject
     public Color ColorTexto => Seleccionada ? Paleta.Blanco : Paleta.Oscuro;
 }
 
+/// <summary>Chip del filtro por marca: contorneado (distinto de las categorías, que son rellenas).</summary>
+public partial class MarcaFiltro : ObservableObject
+{
+    public int? Id { get; init; }
+    public string Nombre { get; init; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Fondo))]
+    [NotifyPropertyChangedFor(nameof(ColorTexto))]
+    [NotifyPropertyChangedFor(nameof(ColorBorde))]
+    private bool seleccionada;
+
+    public Color Fondo => Seleccionada ? Paleta.Oscuro : Paleta.Blanco;
+    public Color ColorTexto => Seleccionada ? Paleta.Blanco : Paleta.Gris;
+    public Color ColorBorde => Seleccionada ? Paleta.Oscuro : Paleta.Linea;
+}
+
 public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : BaseViewModel
 {
     private const int Tamanio = 10;
@@ -25,6 +42,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
     private bool _hayMas;
     private bool _inicializado;
     private int? _categoriaId;
+    private int? _marcaId;
     private decimal? _precioMin;
     private decimal? _precioMax;
 
@@ -41,6 +59,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
     public ObservableCollection<ProductoDto> Productos { get; } = [];
     public ObservableCollection<ProductoDto> Destacados { get; } = [];
     public ObservableCollection<CategoriaFiltro> Categorias { get; } = [];
+    public ObservableCollection<MarcaFiltro> Marcas { get; } = [];
     public List<string> Ordenes { get; } = ["Nombre", "Más vendidos", "Novedades", "Menor precio", "Mayor precio"];
 
     [ObservableProperty] private string buscar = string.Empty;
@@ -55,6 +74,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
         if (_inicializado) return;
         _inicializado = true;
         await CargarCategoriasAsync();
+        await CargarMarcasAsync();
         await CargarDestacadosAsync();
         await CargarPaginaAsync(1);
     }
@@ -99,6 +119,13 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
         await CargarPaginaAsync(1);
     }
 
+    public async Task SeleccionarMarcaAsync(MarcaFiltro marca)
+    {
+        foreach (var m in Marcas) m.Seleccionada = m == marca;
+        _marcaId = marca.Id;
+        await CargarPaginaAsync(1);
+    }
+
     public Task AbrirProductoAsync(ProductoDto p) =>
         IrAsync("producto", new Dictionary<string, object> { ["Producto"] = p });
 
@@ -131,6 +158,22 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
         }
     }
 
+    private async Task CargarMarcasAsync()
+    {
+        try
+        {
+            var r = await api.GetAsync<PagedResult<MarcaDto>>("api/marcas?tamanio=50");
+            Marcas.Clear();
+            Marcas.Add(new MarcaFiltro { Id = null, Nombre = "Todas las marcas", Seleccionada = true });
+            foreach (var m in r.Items.Where(m => m.Activo && m.CantidadProductos > 0))
+                Marcas.Add(new MarcaFiltro { Id = m.Id, Nombre = m.Nombre });
+        }
+        catch
+        {
+            // Igual que las categorías: si falla, el catálogo se muestra sin este filtro.
+        }
+    }
+
     private async Task CargarDestacadosAsync()
     {
         try
@@ -148,7 +191,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
 
     private void ActualizarDestacados() =>
         MostrarDestacados = Destacados.Count > 0 && string.IsNullOrWhiteSpace(Buscar)
-                            && _categoriaId is null && _precioMin is null && _precioMax is null;
+                            && _categoriaId is null && _marcaId is null && _precioMin is null && _precioMax is null;
 
     private Task CargarPaginaAsync(int pagina) => EjecutarAsync(async () =>
     {
@@ -163,6 +206,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
         var url = $"api/productos?pagina={pagina}&tamanio={Tamanio}&orden={ordenApi}";
         if (!string.IsNullOrWhiteSpace(Buscar)) url += $"&buscar={Uri.EscapeDataString(Buscar.Trim())}";
         if (_categoriaId is int id) url += $"&categoriaId={id}";
+        if (_marcaId is int marcaId) url += $"&marcaId={marcaId}";
         if (_precioMin is decimal min) url += $"&precioMin={min.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
         if (_precioMax is decimal max) url += $"&precioMax={max.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
 
@@ -564,6 +608,12 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
     [NotifyPropertyChangedFor(nameof(Linea1Color))]
     [NotifyPropertyChangedFor(nameof(Linea2Color))]
     [NotifyPropertyChangedFor(nameof(Linea3Color))]
+    [NotifyPropertyChangedFor(nameof(Paso1Fecha))]
+    [NotifyPropertyChangedFor(nameof(Paso2Fecha))]
+    [NotifyPropertyChangedFor(nameof(Paso3Fecha))]
+    [NotifyPropertyChangedFor(nameof(Paso4Fecha))]
+    [NotifyPropertyChangedFor(nameof(Historial))]
+    [NotifyPropertyChangedFor(nameof(TieneHistorial))]
     private PedidoDto? pedido;
 
     [ObservableProperty] private DatosTransferenciaDto? datosPago;
@@ -605,6 +655,19 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
     public Color Linea2Color => ColorPaso(3);
     public Color Linea3Color => ColorPaso(4);
 
+    // Fecha y hora reales de cada paso (tabla HistorialPedidos).
+    private string FechaPaso(int n, string estado) =>
+        Paso < n ? string.Empty : Pedido?.Historial.LastOrDefault(h => h.Estado == estado)?.FechaCorta ?? string.Empty;
+    public string Paso1Fecha => Pedido?.Historial.FirstOrDefault()?.FechaCorta ?? string.Empty;
+    public string Paso2Fecha => FechaPaso(2, "EnRevision");
+    public string Paso3Fecha => FechaPaso(3, "Confirmado");
+    public string Paso4Fecha => FechaPaso(4, "Entregado");
+
+    // ----- Historial completo (auditoría): cada cambio de estado con fecha, quién y comentario -----
+    public IReadOnlyList<HistorialPedidoDto> Historial =>
+        (IReadOnlyList<HistorialPedidoDto>?)Pedido?.Historial ?? Array.Empty<HistorialPedidoDto>();
+    public bool TieneHistorial => Historial.Count > 0;
+
     public string EstadoAyuda => Estado switch
     {
         "Pendiente" => EsAdmin
@@ -638,7 +701,22 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
         }
     }
 
-    partial void OnPedidoChanged(PedidoDto? value) => OnPropertyChanged(nameof(TotalTransferir));
+    partial void OnPedidoChanged(PedidoDto? value)
+    {
+        // "Quién" depende de quién mira: el admin ve nombres, el comprador ve "vos" o "la tienda".
+        if (value is not null)
+        {
+            foreach (var h in value.Historial)
+            {
+                h.Quien = h.Usuario is null
+                    ? "registro del sistema"
+                    : h.PorAdministrador
+                        ? (EsAdmin ? $"por {h.Usuario}" : "por la tienda")
+                        : (EsAdmin ? $"por {h.Usuario} (cliente)" : "por vos");
+            }
+        }
+        OnPropertyChanged(nameof(TotalTransferir));
+    }
 
     [RelayCommand]
     private Task CargarAsync() => EjecutarAsync(async () =>
@@ -726,13 +804,25 @@ public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion,
     [RelayCommand]
     private async Task CancelarAsync()
     {
-        if (!await Dialogos.Confirmar("Cancelar pedido", "¿Seguro que querés cancelar este pedido? Las unidades vuelven al stock.", "Cancelar pedido", "Volver", peligro: true))
+        string? motivo = null;
+        if (EsAdmin)
+        {
+            // El motivo es opcional y queda registrado en el historial del pedido.
+            motivo = await Dialogos.Pedir("Cancelar pedido", "Las unidades vuelven al stock. Motivo (opcional, queda en el historial):",
+                Keyboard.Text, "Ej: el cliente no realizó el pago");
+            if (motivo is null) return;
+        }
+        else if (!await Dialogos.Confirmar("Cancelar pedido", "¿Seguro que querés cancelar este pedido? Las unidades vuelven al stock.",
+                     "Cancelar pedido", "Volver", peligro: true))
+        {
             return;
+        }
 
         var ok = await EjecutarAsync(async () =>
         {
             Pedido = EsAdmin
-                ? await api.PutAsync<PedidoDto>($"api/pedidos/{_codigo}/estado", new { estado = "Cancelado" })
+                ? await api.PutAsync<PedidoDto>($"api/pedidos/{_codigo}/estado",
+                    new { estado = "Cancelado", comentario = string.IsNullOrWhiteSpace(motivo) ? null : motivo.Trim() })
                 : await api.PostAsync<PedidoDto>($"api/pedidos/{_codigo}/cancelar", null);
         });
         if (ok) Dialogos.Aviso("Pedido cancelado.");

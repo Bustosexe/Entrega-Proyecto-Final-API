@@ -47,8 +47,8 @@ public static class MauiProgram
         builder.Services.AddTransient<PedidosAdminPage>().AddTransient<PedidosAdminViewModel>();
         builder.Services.AddTransient<ProductosAdminPage>().AddTransient<ProductosAdminViewModel>();
         builder.Services.AddTransient<ProductoFormPage>().AddTransient<ProductoFormViewModel>();
-        builder.Services.AddTransient<IngresosPage>().AddTransient<IngresosViewModel>();
-        builder.Services.AddTransient<IngresoFormPage>().AddTransient<IngresoFormViewModel>();
+        builder.Services.AddTransient<ComprasPage>().AddTransient<ComprasViewModel>();
+        builder.Services.AddTransient<CompraFormPage>().AddTransient<CompraFormViewModel>();
         builder.Services.AddTransient<MasPage>();
         builder.Services.AddTransient<ReportesPage>().AddTransient<ReportesViewModel>();
         builder.Services.AddTransient<AbmListaPage>().AddTransient<AbmListaViewModel>();

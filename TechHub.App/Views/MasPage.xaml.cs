@@ -27,6 +27,7 @@ public partial class MasPage : ContentPage
 
     private async void OnReportes(object? sender, EventArgs e) => await Shell.Current.GoToAsync("reportes");
     private async void OnCategorias(object? sender, EventArgs e) => await AbrirAbm("categorias");
+    private async void OnMarcas(object? sender, EventArgs e) => await AbrirAbm("marcas");
     private async void OnProveedores(object? sender, EventArgs e) => await AbrirAbm("proveedores");
     private async void OnClientes(object? sender, EventArgs e) => await AbrirAbm("clientes");
     private async void OnUsuarios(object? sender, EventArgs e) => await AbrirAbm("usuarios");

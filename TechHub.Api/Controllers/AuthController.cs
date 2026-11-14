@@ -24,6 +24,7 @@ public class AuthController(AppDbContext db, ITokenService tokens, IPasswordHash
     {
         var login = req.Usuario.Trim();
         var usuario = await db.Usuarios
+            .Include(u => u.Rol)
             .FirstOrDefaultAsync(u => u.NombreUsuario == login || u.Email == login, ct);
 
         // Mismo mensaje para usuario inexistente o contraseña incorrecta: no se revela cuál falló.
@@ -79,13 +80,14 @@ public class AuthController(AppDbContext db, ITokenService tokens, IPasswordHash
             NombreUsuario = email,
             NombreCompleto = cliente.Nombre,
             Email = email,
-            Rol = Roles.Comprador,
+            RolId = Roles.CompradorId,
             Cliente = cliente
         };
         usuario.PasswordHash = hasher.HashPassword(usuario, req.Password);
         db.Usuarios.Add(usuario);
 
         await db.SaveChangesAsync(ct); // Cliente + Usuario en una sola transacción
+        await db.Entry(usuario).Reference(u => u.Rol).LoadAsync(ct);
 
         return CreatedAtAction(nameof(Perfil), null, CrearRespuesta(usuario));
     }
@@ -98,7 +100,7 @@ public class AuthController(AppDbContext db, ITokenService tokens, IPasswordHash
     public async Task<ActionResult<PerfilDto>> Perfil(CancellationToken ct)
     {
         var id = User.ObtenerUsuarioId();
-        var usuario = await db.Usuarios.AsNoTracking().Include(u => u.Cliente)
+        var usuario = await db.Usuarios.AsNoTracking().Include(u => u.Cliente).Include(u => u.Rol)
             .FirstOrDefaultAsync(u => u.Id == id, ct);
         return usuario is null ? Unauthorized() : Ok(APerfil(usuario));
     }
@@ -109,7 +111,7 @@ public class AuthController(AppDbContext db, ITokenService tokens, IPasswordHash
     public async Task<ActionResult<PerfilDto>> ActualizarPerfil(PerfilRequest req, CancellationToken ct)
     {
         var id = User.ObtenerUsuarioId();
-        var usuario = await db.Usuarios.Include(u => u.Cliente)
+        var usuario = await db.Usuarios.Include(u => u.Cliente).Include(u => u.Rol)
             .FirstOrDefaultAsync(u => u.Id == id, ct);
         if (usuario is null) return Unauthorized();
 

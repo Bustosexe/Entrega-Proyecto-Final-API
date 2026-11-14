@@ -24,7 +24,7 @@
                     </Grid>
 
                     <Grid IsVisible="{Binding MostrarLineaDeTiempo}" ColumnDefinitions="Auto,*,Auto,*,Auto,*,Auto"
-                          RowDefinitions="Auto,Auto" Margin="0,16,0,0" RowSpacing="8">
+                          RowDefinitions="Auto,Auto,Auto" Margin="0,16,0,0" RowSpacing="4">
                         <BoxView Grid.Column="0" WidthRequest="14" HeightRequest="14" CornerRadius="7" Color="{Binding Paso1Color}" />
                         <BoxView Grid.Column="1" HeightRequest="2" Color="{Binding Linea1Color}" VerticalOptions="Center" />
                         <BoxView Grid.Column="2" WidthRequest="14" HeightRequest="14" CornerRadius="7" Color="{Binding Paso2Color}" />
@@ -37,6 +37,13 @@
                             <Label Grid.Column="1" Text="Pago enviado" Style="{StaticResource Mini}" HorizontalTextAlignment="Center" />
                             <Label Grid.Column="2" Text="Confirmado" Style="{StaticResource Mini}" HorizontalTextAlignment="Center" />
                             <Label Grid.Column="3" Text="Entregado" Style="{StaticResource Mini}" HorizontalTextAlignment="End" />
+                        </Grid>
+                        <!-- Fecha real de cada paso -->
+                        <Grid Grid.Row="2" Grid.ColumnSpan="7" ColumnDefinitions="*,*,*,*">
+                            <Label Text="{Binding Paso1Fecha}" FontSize="10" TextColor="{StaticResource TextoTenue}" />
+                            <Label Grid.Column="1" Text="{Binding Paso2Fecha}" FontSize="10" TextColor="{StaticResource TextoTenue}" HorizontalTextAlignment="Center" />
+                            <Label Grid.Column="2" Text="{Binding Paso3Fecha}" FontSize="10" TextColor="{StaticResource TextoTenue}" HorizontalTextAlignment="Center" />
+                            <Label Grid.Column="3" Text="{Binding Paso4Fecha}" FontSize="10" TextColor="{StaticResource TextoTenue}" HorizontalTextAlignment="End" />
                         </Grid>
                     </Grid>
 
@@ -147,6 +154,27 @@
                     <VerticalStackLayout Spacing="3">
                         <Label Text="Observaciones" Style="{StaticResource Mini}" />
                         <Label Text="{Binding Pedido.Observaciones}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Historial de estados (HistorialPedidos): fecha, quién y comentario -->
+                <Border Style="{StaticResource Tarjeta}" IsVisible="{Binding TieneHistorial}">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Text="Historial del pedido" Style="{StaticResource Subtitulo}" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding Historial}" Spacing="12">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="m:HistorialPedidoDto">
+                                    <Grid ColumnDefinitions="12,*" ColumnSpacing="12" RowDefinitions="Auto,Auto,Auto">
+                                        <BoxView WidthRequest="10" HeightRequest="10" CornerRadius="5" Color="{Binding Color}"
+                                                 VerticalOptions="Center" />
+                                        <Label Grid.Column="1" Text="{Binding EstadoTexto}" FontAttributes="Bold" FontSize="14" />
+                                        <Label Grid.Column="1" Grid.Row="1" Text="{Binding Detalle}" Style="{StaticResource Secundario}" FontSize="12" />
+                                        <Label Grid.Column="1" Grid.Row="2" Text="{Binding Comentario}" FontSize="13" FontAttributes="Italic"
+                                               TextColor="{StaticResource TextoSecundario}" IsVisible="{Binding TieneComentario}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
                     </VerticalStackLayout>
                 </Border>
 

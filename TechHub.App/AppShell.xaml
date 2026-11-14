@@ -34,7 +34,7 @@
             <ShellContent ContentTemplate="{DataTemplate views:ProductosAdminPage}" />
         </Tab>
         <Tab Title="Compras" Icon="ic_compras.png" Route="compras">
-            <ShellContent ContentTemplate="{DataTemplate views:IngresosPage}" />
+            <ShellContent ContentTemplate="{DataTemplate views:ComprasPage}" />
         </Tab>
         <Tab Title="Más" Icon="ic_mas.png" Route="mas">
             <ShellContent ContentTemplate="{DataTemplate views:MasPage}" />

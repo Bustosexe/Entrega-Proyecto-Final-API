@@ -23,21 +23,20 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var mesUtc = new DateTime(ahoraAr.Year, ahoraAr.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddHours(3);
 
         var activos = db.Productos.AsNoTracking().Where(p => p.Activo);
-        // Facturación = pedidos con pago confirmado o entregados.
-        var ventas = db.Salidas.AsNoTracking().Where(s => EstadosPedido.Cobrados.Contains(s.Estado));
+        // Facturación = renglones de pedidos con pago confirmado o entregados.
+        var cobrados = db.Pedidos.AsNoTracking().Where(p => EstadosPedido.CobradosIds.Contains(p.EstadoId));
+        var renglones = db.DetallesPedido.AsNoTracking().Where(d => EstadosPedido.CobradosIds.Contains(d.Pedido.EstadoId));
 
         var resumen = new ResumenDto(
             TotalProductos: await activos.CountAsync(ct),
             ProductosStockBajo: await activos.CountAsync(p => p.Stock <= p.StockMinimo, ct),
             UnidadesEnStock: await activos.SumAsync(p => p.Stock, ct),
             ValorInventario: await activos.SumAsync(p => p.Precio * p.Stock, ct),
-            PedidosPendientes: await db.Salidas.Where(s => s.Estado == EstadosPedido.Pendiente)
-                .Select(s => s.CodigoPedido).Distinct().CountAsync(ct),
-            PagosEnRevision: await db.Salidas.Where(s => s.Estado == EstadosPedido.EnRevision)
-                .Select(s => s.CodigoPedido).Distinct().CountAsync(ct),
-            VentasHoy: await ventas.Where(s => s.Fecha >= hoyUtc).Select(s => s.CodigoPedido).Distinct().CountAsync(ct),
-            FacturacionHoy: await ventas.Where(s => s.Fecha >= hoyUtc).SumAsync(s => s.Total, ct),
-            FacturacionMes: await ventas.Where(s => s.Fecha >= mesUtc).SumAsync(s => s.Total, ct),
+            PedidosPendientes: await db.Pedidos.CountAsync(p => p.EstadoId == EstadosPedido.PendienteId, ct),
+            PagosEnRevision: await db.Pedidos.CountAsync(p => p.EstadoId == EstadosPedido.EnRevisionId, ct),
+            VentasHoy: await cobrados.CountAsync(p => p.Fecha >= hoyUtc, ct),
+            FacturacionHoy: await renglones.Where(d => d.Pedido.Fecha >= hoyUtc).SumAsync(d => d.Cantidad * d.PrecioUnitario, ct),
+            FacturacionMes: await renglones.Where(d => d.Pedido.Fecha >= mesUtc).SumAsync(d => d.Cantidad * d.PrecioUnitario, ct),
             Clientes: await db.Clientes.CountAsync(c => c.Activo, ct),
             Proveedores: await db.Proveedores.CountAsync(p => p.Activo, ct));
 
@@ -53,14 +52,14 @@ public class DashboardController(AppDbContext db) : ControllerBase
         var desdeAr = hoyAr.AddDays(-(dias - 1));
         var desdeUtc = desdeAr.AddHours(3);
 
-        var filas = await db.Salidas.AsNoTracking()
-            .Where(s => EstadosPedido.Cobrados.Contains(s.Estado) && s.Fecha >= desdeUtc)
-            .Select(s => new { s.Fecha, s.Total, s.CodigoPedido })
+        var filas = await db.Pedidos.AsNoTracking()
+            .Where(p => EstadosPedido.CobradosIds.Contains(p.EstadoId) && p.Fecha >= desdeUtc)
+            .Select(p => new { p.Fecha, Total = p.Detalles.Sum(d => d.Cantidad * d.PrecioUnitario) })
             .ToListAsync(ct);
 
         var porDia = filas
             .GroupBy(f => f.Fecha.AddHours(-3).Date)
-            .ToDictionary(g => g.Key, g => (Total: g.Sum(x => x.Total), Pedidos: g.Select(x => x.CodigoPedido).Distinct().Count()));
+            .ToDictionary(g => g.Key, g => (Total: g.Sum(x => x.Total), Pedidos: g.Count()));
 
         var cultura = new System.Globalization.CultureInfo("es-AR");
         var resultado = Enumerable.Range(0, dias)
@@ -79,10 +78,10 @@ public class DashboardController(AppDbContext db) : ControllerBase
     {
         cantidad = Math.Clamp(cantidad, 1, 20);
 
-        var ranking = await db.Salidas.AsNoTracking()
-            .Where(s => EstadosPedido.Cobrados.Contains(s.Estado))
-            .GroupBy(s => s.ProductoId)
-            .Select(g => new { ProductoId = g.Key, Unidades = g.Sum(s => s.Cantidad), Total = g.Sum(s => s.Total) })
+        var ranking = await db.DetallesPedido.AsNoTracking()
+            .Where(d => EstadosPedido.CobradosIds.Contains(d.Pedido.EstadoId))
+            .GroupBy(d => d.ProductoId)
+            .Select(g => new { ProductoId = g.Key, Unidades = g.Sum(d => d.Cantidad), Total = g.Sum(d => d.Cantidad * d.PrecioUnitario) })
             .OrderByDescending(x => x.Unidades)
             .Take(cantidad)
             .ToListAsync(ct);
@@ -97,5 +96,22 @@ public class DashboardController(AppDbContext db) : ControllerBase
             .Where(r => productos.ContainsKey(r.ProductoId))
             .Select(r => new TopProductoDto(r.ProductoId, productos[r.ProductoId].Nombre, productos[r.ProductoId].ImagenUrl, r.Unidades, r.Total))
             .ToList());
+    }
+
+    /// <summary>Ventas cobradas agrupadas por marca (unidades y facturación), de mayor a menor.</summary>
+    [HttpGet("ventas-por-marca")]
+    public async Task<ActionResult<List<VentaMarcaDto>>> VentasPorMarca([FromQuery] int cantidad = 6, CancellationToken ct = default)
+    {
+        cantidad = Math.Clamp(cantidad, 1, 20);
+
+        var lista = await db.DetallesPedido.AsNoTracking()
+            .Where(d => EstadosPedido.CobradosIds.Contains(d.Pedido.EstadoId))
+            .GroupBy(d => new { d.Producto.MarcaId, d.Producto.Marca.Nombre })
+            .Select(g => new { g.Key.MarcaId, g.Key.Nombre, Unidades = g.Sum(d => d.Cantidad), Total = g.Sum(d => d.Cantidad * d.PrecioUnitario) })
+            .OrderByDescending(x => x.Total)
+            .Take(cantidad)
+            .ToListAsync(ct);
+
+        return Ok(lista.Select(x => new VentaMarcaDto(x.MarcaId, x.Nombre, x.Unidades, x.Total)).ToList());
     }
 }

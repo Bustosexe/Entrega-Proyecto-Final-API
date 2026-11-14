@@ -105,6 +105,29 @@
                     </VerticalStackLayout>
                 </Border>
 
+                <!-- Ventas por marca -->
+                <Border Style="{StaticResource Tarjeta}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Ventas por marca" Style="{StaticResource Subtitulo}" />
+                        <Label Text="Todavía no hay ventas registradas." Style="{StaticResource Secundario}"
+                               IsVisible="{Binding SinVentasMarca}" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding VentasPorMarca}" Spacing="10">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="m:VentaMarcaDto">
+                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="4">
+                                        <Label Text="{Binding Marca}" FontAttributes="Bold" FontSize="13" />
+                                        <Label Grid.Column="1" Text="{Binding TotalTexto}" FontAttributes="Bold" FontSize="13" />
+                                        <ProgressBar Grid.Row="1" Progress="{Binding Proporcion}" ProgressColor="{StaticResource Acento}"
+                                                     VerticalOptions="Center" />
+                                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding Detalle}" Style="{StaticResource Secundario}"
+                                               FontSize="12" HorizontalTextAlignment="End" />
+                                    </Grid>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
                 <!-- Alerta de stock bajo -->
                 <Border Style="{StaticResource Tarjeta}">
                     <VerticalStackLayout Spacing="10">

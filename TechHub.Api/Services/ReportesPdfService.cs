@@ -112,6 +112,28 @@ public class ReportesPdfService(AppDbContext db, IOptions<PagosOptions> pagos) :
 
                 if (!string.IsNullOrWhiteSpace(p.Observaciones))
                     col.Item().Text($"Observaciones: {p.Observaciones}").FontColor(Gris);
+
+                // Seguimiento: cada cambio de estado registrado en HistorialPedidos.
+                if (p.Historial.Count > 0)
+                {
+                    col.Item().PaddingTop(4).Text("Seguimiento del pedido").Bold().FontSize(12);
+                    col.Item().Table(t =>
+                    {
+                        t.ColumnsDefinition(c => { c.RelativeColumn(2.4f); c.RelativeColumn(3); c.RelativeColumn(5); });
+                        t.Header(h =>
+                        {
+                            h.Cell().Element(Encabezado).Text("Fecha");
+                            h.Cell().Element(Encabezado).Text("Estado");
+                            h.Cell().Element(Encabezado).Text("Detalle");
+                        });
+                        foreach (var h in p.Historial)
+                        {
+                            t.Cell().Element(Celda).Text(HoraAr(h.Fecha).ToString("dd/MM/yyyy HH:mm", Ar));
+                            t.Cell().Element(Celda).Text(h.EstadoTexto);
+                            t.Cell().Element(Celda).Text(h.Comentario ?? "").FontColor(Gris);
+                        }
+                    });
+                }
             });
         })).GeneratePdf();
     }
@@ -124,7 +146,7 @@ public class ReportesPdfService(AppDbContext db, IOptions<PagosOptions> pagos) :
         var productos = await db.Productos.AsNoTracking()
             .Where(p => p.Activo)
             .OrderBy(p => p.Categoria.Nombre).ThenBy(p => p.Nombre)
-            .Select(p => new { p.Nombre, p.Marca, Categoria = p.Categoria.Nombre, p.Stock, p.StockMinimo, p.Precio })
+            .Select(p => new { p.Nombre, Marca = p.Marca.Nombre, Categoria = p.Categoria.Nombre, p.Stock, p.StockMinimo, p.Precio })
             .ToListAsync(ct);
 
         var unidades = productos.Sum(p => p.Stock);
@@ -191,20 +213,26 @@ public class ReportesPdfService(AppDbContext db, IOptions<PagosOptions> pagos) :
         var desdeUtc = desde.Date.AddHours(3);
         var hastaUtc = hasta.Date.AddDays(1).AddHours(3);
 
-        var filas = await db.Salidas.AsNoTracking()
-            .Where(s => EstadosPedido.Cobrados.Contains(s.Estado) && s.Fecha >= desdeUtc && s.Fecha < hastaUtc)
-            .Select(s => new { s.CodigoPedido, s.Fecha, Cliente = s.Cliente.Nombre, Producto = s.Producto.Nombre, s.Cantidad, s.Total, s.Estado })
+        // Renglones de pedidos cobrados del período (DetallesPedido + Pedidos + Productos + Marcas + Clientes).
+        var filas = await db.DetallesPedido.AsNoTracking()
+            .Where(d => EstadosPedido.CobradosIds.Contains(d.Pedido.EstadoId) && d.Pedido.Fecha >= desdeUtc && d.Pedido.Fecha < hastaUtc)
+            .Select(d => new
+            {
+                d.Pedido.Codigo, d.Pedido.Fecha, Cliente = d.Pedido.Cliente.Nombre, Estado = d.Pedido.Estado.Nombre,
+                Producto = d.Producto.Nombre, Marca = d.Producto.Marca.Nombre,
+                d.Cantidad, Total = d.Cantidad * d.PrecioUnitario
+            })
             .ToListAsync(ct);
 
-        var pedidos = filas.GroupBy(f => f.CodigoPedido)
+        var pedidos = filas.GroupBy(f => f.Codigo)
             .Select(g => new
             {
                 Codigo = g.Key,
-                Fecha = HoraAr(g.Min(x => x.Fecha)),
+                Fecha = HoraAr(g.First().Fecha),
                 g.First().Cliente,
                 Unidades = g.Sum(x => x.Cantidad),
                 Total = g.Sum(x => x.Total),
-                Estado = EstadosPedido.Texto(g.First().Estado)
+                g.First().Estado
             })
             .OrderBy(p => p.Fecha)
             .ToList();
@@ -212,6 +240,10 @@ public class ReportesPdfService(AppDbContext db, IOptions<PagosOptions> pagos) :
         var top = filas.GroupBy(f => f.Producto)
             .Select(g => new { Producto = g.Key, Unidades = g.Sum(x => x.Cantidad), Total = g.Sum(x => x.Total) })
             .OrderByDescending(x => x.Unidades).Take(5).ToList();
+
+        var porMarca = filas.GroupBy(f => f.Marca)
+            .Select(g => new { Marca = g.Key, Unidades = g.Sum(x => x.Cantidad), Total = g.Sum(x => x.Total) })
+            .OrderByDescending(x => x.Total).ToList();
 
         var total = pedidos.Sum(p => p.Total);
         var ticket = pedidos.Count == 0 ? 0 : total / pedidos.Count;
@@ -249,6 +281,29 @@ public class ReportesPdfService(AppDbContext db, IOptions<PagosOptions> pagos) :
                             t.Cell().Element(Celda).Text(x.Producto);
                             t.Cell().Element(Celda).AlignRight().Text(x.Unidades.ToString());
                             t.Cell().Element(Celda).AlignRight().Text(Moneda(x.Total));
+                        }
+                    });
+                }
+
+                if (porMarca.Count > 0)
+                {
+                    col.Item().Text("Ventas por marca").Bold().FontSize(12);
+                    col.Item().Table(t =>
+                    {
+                        t.ColumnsDefinition(c => { c.RelativeColumn(5); c.RelativeColumn(1.5f); c.RelativeColumn(2.5f); c.RelativeColumn(1.5f); });
+                        t.Header(h =>
+                        {
+                            h.Cell().Element(Encabezado).Text("Marca");
+                            h.Cell().Element(Encabezado).AlignRight().Text("Unidades");
+                            h.Cell().Element(Encabezado).AlignRight().Text("Total");
+                            h.Cell().Element(Encabezado).AlignRight().Text("% ventas");
+                        });
+                        foreach (var x in porMarca)
+                        {
+                            t.Cell().Element(Celda).Text(x.Marca);
+                            t.Cell().Element(Celda).AlignRight().Text(x.Unidades.ToString());
+                            t.Cell().Element(Celda).AlignRight().Text(Moneda(x.Total));
+                            t.Cell().Element(Celda).AlignRight().Text(total == 0 ? "-" : (x.Total / total).ToString("P0", Ar));
                         }
                     });
                 }
