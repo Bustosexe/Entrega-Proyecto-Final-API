@@ -35,6 +35,9 @@ public static class MauiProgram
         // Tienda (visitante / comprador)
         builder.Services.AddTransient<CatalogoPage>().AddTransient<CatalogoViewModel>();
         builder.Services.AddTransient<ProductoDetallePage>().AddTransient<ProductoDetalleViewModel>();
+        builder.Services.AddTransient<ComboDetallePage>().AddTransient<ComboDetalleViewModel>();
+        builder.Services.AddTransient<ComboFormPage>().AddTransient<ComboFormViewModel>();
+        builder.Services.AddTransient<OfertaFormPage>().AddTransient<OfertaFormViewModel>();
         builder.Services.AddTransient<CarritoPage>().AddTransient<CarritoViewModel>();
         builder.Services.AddTransient<MisPedidosPage>().AddTransient<MisPedidosViewModel>();
         builder.Services.AddTransient<PedidoDetallePage>().AddTransient<PedidoDetalleViewModel>();

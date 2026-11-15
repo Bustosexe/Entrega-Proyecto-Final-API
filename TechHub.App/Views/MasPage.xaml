@@ -21,11 +21,14 @@
             <Button Text="Reportes en PDF" Clicked="OnReportes" />
 
             <Label Text="Gestión" Style="{StaticResource Rotulo}" />
+            <Button Text="Ofertas" Style="{StaticResource BotonSecundario}" Clicked="OnOfertas" />
+            <Button Text="Combos de productos" Style="{StaticResource BotonSecundario}" Clicked="OnCombos" />
             <Button Text="Categorías" Style="{StaticResource BotonSecundario}" Clicked="OnCategorias" />
             <Button Text="Marcas" Style="{StaticResource BotonSecundario}" Clicked="OnMarcas" />
             <Button Text="Proveedores" Style="{StaticResource BotonSecundario}" Clicked="OnProveedores" />
             <Button Text="Clientes" Style="{StaticResource BotonSecundario}" Clicked="OnClientes" />
             <Button Text="Usuarios y administradores" Style="{StaticResource BotonSecundario}" Clicked="OnUsuarios" />
+            <Button Text="Auditoría" Style="{StaticResource BotonSecundario}" Clicked="OnAuditoria" />
 
             <Label Text="Sesión" Style="{StaticResource Rotulo}" Margin="0,12,0,0" />
             <Button Text="Cerrar sesión" Style="{StaticResource BotonPeligro}" Clicked="OnCerrarSesion" />

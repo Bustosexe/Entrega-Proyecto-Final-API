@@ -43,6 +43,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
     private bool _inicializado;
     private int? _categoriaId;
     private int? _marcaId;
+    private bool _soloOfertas;
     private decimal? _precioMin;
     private decimal? _precioMax;
 
@@ -58,6 +59,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
 
     public ObservableCollection<ProductoDto> Productos { get; } = [];
     public ObservableCollection<ProductoDto> Destacados { get; } = [];
+    public ObservableCollection<ComboDto> Combos { get; } = [];
     public ObservableCollection<CategoriaFiltro> Categorias { get; } = [];
     public ObservableCollection<MarcaFiltro> Marcas { get; } = [];
     public List<string> Ordenes { get; } = ["Nombre", "Más vendidos", "Novedades", "Menor precio", "Mayor precio"];
@@ -68,6 +70,10 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
     [ObservableProperty] private string mensajeVacio = "Cargando productos...";
     [ObservableProperty] private string precioTexto = "Precio";
     [ObservableProperty] private bool mostrarDestacados;
+    [ObservableProperty] private bool mostrarCombos;
+
+    /// <summary>Id especial del chip "Ofertas" (no es una categoría real).</summary>
+    private const int IdChipOfertas = -1;
 
     public async Task AlAparecerAsync()
     {
@@ -76,6 +82,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
         await CargarCategoriasAsync();
         await CargarMarcasAsync();
         await CargarDestacadosAsync();
+        await CargarCombosAsync();
         await CargarPaginaAsync(1);
     }
 
@@ -90,6 +97,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
     private async Task RecargarAsync()
     {
         await CargarDestacadosAsync();
+        await CargarCombosAsync();
         await CargarPaginaAsync(1);
     }
 
@@ -115,7 +123,8 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
     public async Task SeleccionarCategoriaAsync(CategoriaFiltro categoria)
     {
         foreach (var c in Categorias) c.Seleccionada = c == categoria;
-        _categoriaId = categoria.Id;
+        _soloOfertas = categoria.Id == IdChipOfertas;
+        _categoriaId = categoria.Id == IdChipOfertas ? null : categoria.Id;
         await CargarPaginaAsync(1);
     }
 
@@ -128,6 +137,9 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
 
     public Task AbrirProductoAsync(ProductoDto p) =>
         IrAsync("producto", new Dictionary<string, object> { ["Producto"] = p });
+
+    public Task AbrirComboAsync(ComboDto c) =>
+        IrAsync("combo", new Dictionary<string, object> { ["Combo"] = c });
 
     /// <summary>Botón "+" de la tarjeta: agrega una unidad sin salir del catálogo.</summary>
     public void AgregarRapido(ProductoDto p)
@@ -149,6 +161,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
             var r = await api.GetAsync<PagedResult<CategoriaDto>>("api/categorias?tamanio=50");
             Categorias.Clear();
             Categorias.Add(new CategoriaFiltro { Id = null, Nombre = "Todas", Seleccionada = true });
+            Categorias.Add(new CategoriaFiltro { Id = IdChipOfertas, Nombre = "% Ofertas" });
             foreach (var c in r.Items.Where(c => c.Activo && c.CantidadProductos > 0))
                 Categorias.Add(new CategoriaFiltro { Id = c.Id, Nombre = c.Nombre });
         }
@@ -189,9 +202,29 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
         ActualizarDestacados();
     }
 
-    private void ActualizarDestacados() =>
-        MostrarDestacados = Destacados.Count > 0 && string.IsNullOrWhiteSpace(Buscar)
-                            && _categoriaId is null && _marcaId is null && _precioMin is null && _precioMax is null;
+    private async Task CargarCombosAsync()
+    {
+        try
+        {
+            var r = await api.GetAsync<PagedResult<ComboDto>>("api/combos?tamanio=10");
+            Combos.Clear();
+            foreach (var c in r.Items.Where(c => c.Disponible)) Combos.Add(c);
+        }
+        catch
+        {
+            Combos.Clear();
+        }
+        ActualizarDestacados();
+    }
+
+    private void ActualizarDestacados()
+    {
+        // Destacados y combos solo se muestran sin filtros ni búsqueda.
+        var sinFiltros = string.IsNullOrWhiteSpace(Buscar) && _categoriaId is null && _marcaId is null
+                         && !_soloOfertas && _precioMin is null && _precioMax is null;
+        MostrarDestacados = Destacados.Count > 0 && sinFiltros;
+        MostrarCombos = Combos.Count > 0 && sinFiltros;
+    }
 
     private Task CargarPaginaAsync(int pagina) => EjecutarAsync(async () =>
     {
@@ -207,6 +240,7 @@ public partial class CatalogoViewModel(ApiClient api, CarritoService carrito) : 
         if (!string.IsNullOrWhiteSpace(Buscar)) url += $"&buscar={Uri.EscapeDataString(Buscar.Trim())}";
         if (_categoriaId is int id) url += $"&categoriaId={id}";
         if (_marcaId is int marcaId) url += $"&marcaId={marcaId}";
+        if (_soloOfertas) url += "&soloOfertas=true";
         if (_precioMin is decimal min) url += $"&precioMin={min.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
         if (_precioMax is decimal max) url += $"&precioMax={max.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
 
@@ -311,6 +345,77 @@ public partial class ProductoDetalleViewModel(ApiClient api, CarritoService carr
 }
 
 // =====================================================================
+// Detalle de combo
+// =====================================================================
+
+public partial class ComboDetalleViewModel(ApiClient api, CarritoService carrito) : BaseViewModel, IQueryAttributable
+{
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PuedeComprar))]
+    private ComboDto? combo;
+
+    [ObservableProperty] private int cantidad = 1;
+
+    public bool PuedeComprar => Combo?.Disponible == true;
+
+    public void ApplyQueryAttributes(IDictionary<string, object> query)
+    {
+        if (query.TryGetValue("Combo", out var valor) && valor is ComboDto c)
+        {
+            Combo = c;
+            Titulo = c.Nombre;
+        }
+    }
+
+    public async Task AlAparecerAsync()
+    {
+        if (Combo is null) return;
+        try
+        {
+            // Refresca precios y stock por si cambiaron desde que se cargó el catálogo.
+            Combo = await api.GetAsync<ComboDto>($"api/combos/{Combo.Id}");
+        }
+        catch { /* se muestran los datos que ya teníamos */ }
+    }
+
+    [RelayCommand]
+    private void Sumar()
+    {
+        if (Combo is not null && Cantidad < Math.Min(Combo.StockDisponible, CarritoService.MaximoPorCombo)) Cantidad++;
+    }
+
+    [RelayCommand]
+    private void Restar()
+    {
+        if (Cantidad > 1) Cantidad--;
+    }
+
+    [RelayCommand]
+    private async Task AgregarAsync()
+    {
+        if (Combo is null) return;
+        if (!Combo.Disponible)
+        {
+            await Dialogos.Advertencia("Sin stock", "Este combo no está disponible por el momento.");
+            return;
+        }
+        if (!carrito.AgregarCombo(Combo, Cantidad))
+        {
+            var enCarrito = carrito.Items.FirstOrDefault(i => i.ComboId == Combo.Id)?.Cantidad ?? 0;
+            await Dialogos.Advertencia("Stock insuficiente",
+                $"Se pueden armar {Combo.StockDisponible} combos y ya tenés {enCarrito} en el carrito.");
+            return;
+        }
+
+        Dialogos.Aviso($"Agregado al carrito: {Cantidad} x {Combo.Nombre}");
+        Cantidad = 1;
+    }
+
+    [RelayCommand]
+    private Task IrAlCarritoAsync() => IrAsync("//tienda/carrito");
+}
+
+// =====================================================================
 // Carrito
 // =====================================================================
 
@@ -405,7 +510,10 @@ public partial class CarritoViewModel : BaseViewModel
         {
             var cuerpo = new
             {
-                items = Carrito.Items.Select(i => new { productoId = i.ProductoId, cantidad = i.Cantidad }).ToList(),
+                items = Carrito.Items.Where(i => i.ComboId is null)
+                    .Select(i => new { productoId = i.ProductoId, cantidad = i.Cantidad }).ToList(),
+                combos = Carrito.Items.Where(i => i.ComboId is not null)
+                    .Select(i => new { comboId = i.ComboId, cantidad = i.Cantidad }).ToList(),
                 observaciones = string.IsNullOrWhiteSpace(Observaciones) ? null : Observaciones.Trim()
             };
             pedido = await _api.PostAsync<PedidoDto>("api/pedidos", cuerpo);
@@ -584,7 +692,7 @@ public partial class MisPedidosViewModel(ApiClient api, SesionService sesion) : 
 
 public partial class PedidoDetalleViewModel(ApiClient api, SesionService sesion, CarritoService carrito) : BaseViewModel, IQueryAttributable
 {
-    private static readonly Color ColorPendiente = Color.FromArgb("#E2E8F0");
+    private static readonly Color ColorPendiente = Color.FromArgb("#E4E4E7");
 
     private string _codigo = string.Empty;
 

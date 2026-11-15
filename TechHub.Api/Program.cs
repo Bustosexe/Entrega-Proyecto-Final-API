@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using TechHub.Api.Common;
@@ -21,7 +22,9 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 // ---------------- Base de datos (EF Core Code-First + SQL Server) ----------------
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+        // Las migraciones se escriben a mano y el snapshot puede quedar un paso atrás: no debe impedir que la API arranque.
+        .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
 
 // ---------------- Seguridad: JWT ----------------
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -59,6 +62,7 @@ builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<IComprobanteService, ComprobanteService>();
 builder.Services.AddScoped<IReportesPdfService, ReportesPdfService>();
 builder.Services.AddScoped<INotificacionesService, NotificacionesService>();
+builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 
 // Pagos por transferencia y emails (Gmail SMTP con contraseña de aplicación)
 builder.Services.Configure<PagosOptions>(builder.Configuration.GetSection("Pagos"));
@@ -72,7 +76,8 @@ builder.Services.AddHostedService<EmailBackgroundService>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ManejadorErrores>();
-builder.Services.AddControllers();
+// El filtro de auditoría registra en la bitácora cada alta, modificación y baja.
+builder.Services.AddControllers(o => o.Filters.Add<AuditoriaFilter>());
 
 // ---------------- Swagger con botón "Authorize" para el Bearer Token ----------------
 builder.Services.AddEndpointsApiExplorer();

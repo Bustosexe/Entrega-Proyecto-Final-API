@@ -31,6 +31,12 @@ public partial class CatalogoPage : ContentPage
             await _vm.AbrirProductoAsync(producto);
     }
 
+    private async void OnComboTocado(object? sender, TappedEventArgs e)
+    {
+        if (sender is BindableObject { BindingContext: ComboDto combo })
+            await _vm.AbrirComboAsync(combo);
+    }
+
     private void OnAgregarRapido(object? sender, EventArgs e)
     {
         if (sender is BindableObject { BindingContext: ProductoDto producto })

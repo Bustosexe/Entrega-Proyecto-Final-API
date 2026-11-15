@@ -7,13 +7,15 @@ using Estados = TechHub.Api.Models.EstadosPedido;
 namespace TechHub.Api.Data;
 
 /// <summary>
-/// Modelo de datos (Code-First) normalizado hasta la 3ª forma normal: 13 tablas.
+/// Modelo de datos (Code-First) normalizado hasta la 3ª forma normal: 18 tablas.
 ///   Catálogo:       Categorias, Marcas, Productos
 ///   Terceros:       Proveedores, Clientes
 ///   Seguridad:      Usuarios, Roles
 ///   Compras:        Compras (cabecera) + DetallesCompra (renglones)
 ///   Ventas:         Pedidos (cabecera) + DetallesPedido (renglones) + HistorialPedidos (cambios de estado)
 ///   Referencia:     EstadosPedido
+///   Promociones:    Ofertas (descuento por producto), Combos + ComboItems, CategoriasCompatibles (qué categorías pueden ir juntas)
+///   Auditoría:      Auditoria (bitácora de operaciones)
 /// </summary>
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
@@ -30,6 +32,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Pedido> Pedidos => Set<Pedido>();
     public DbSet<DetallePedido> DetallesPedido => Set<DetallePedido>();
     public DbSet<HistorialPedido> HistorialPedidos => Set<HistorialPedido>();
+    public DbSet<Oferta> Ofertas => Set<Oferta>();
+    public DbSet<Combo> Combos => Set<Combo>();
+    public DbSet<ComboItem> ComboItems => Set<ComboItem>();
+    public DbSet<CategoriaCompatible> CategoriasCompatibles => Set<CategoriaCompatible>();
+    public DbSet<RegistroAuditoria> Auditoria => Set<RegistroAuditoria>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -247,6 +254,82 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.Estado).WithMany(s => s.Historial)
              .HasForeignKey(x => x.EstadoId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Usuario).WithMany(u => u.CambiosDeEstado)
+             .HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // ---------- Ofertas (descuento temporal por producto) ----------
+        modelBuilder.Entity<Oferta>(e =>
+        {
+            e.ToTable("Ofertas", t =>
+            {
+                t.HasCheckConstraint("CK_Ofertas_Porcentaje", "[Porcentaje] BETWEEN 1 AND 90");
+                t.HasCheckConstraint("CK_Ofertas_Vigencia", "[Hasta] >= [Desde]");
+            });
+            e.Property(x => x.Titulo).HasMaxLength(80);
+            e.HasIndex(x => new { x.ProductoId, x.Hasta });
+
+            e.HasOne(x => x.Producto).WithMany(p => p.Ofertas)
+             .HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ---------- Combos + ComboItems ----------
+        modelBuilder.Entity<Combo>(e =>
+        {
+            e.ToTable("Combos", t => t.HasCheckConstraint("CK_Combos_Porcentaje", "[Porcentaje] BETWEEN 1 AND 50"));
+            e.Property(x => x.Nombre).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Descripcion).HasMaxLength(500);
+            e.HasIndex(x => x.Nombre).IsUnique();
+        });
+
+        modelBuilder.Entity<ComboItem>(e =>
+        {
+            e.ToTable("ComboItems", t => t.HasCheckConstraint("CK_ComboItems_Cantidad", "[Cantidad] BETWEEN 1 AND 20"));
+            e.HasIndex(x => new { x.ComboId, x.ProductoId }).IsUnique();
+
+            e.HasOne(x => x.Combo).WithMany(c => c.Items)
+             .HasForeignKey(x => x.ComboId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Producto).WithMany(p => p.EnCombos)
+             .HasForeignKey(x => x.ProductoId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---------- CategoriasCompatibles (qué categorías pueden formar un combo) ----------
+        modelBuilder.Entity<CategoriaCompatible>(e =>
+        {
+            e.ToTable("CategoriasCompatibles", t => t.HasCheckConstraint("CK_CategoriasCompatibles_Orden", "[CategoriaAId] < [CategoriaBId]"));
+            e.HasKey(x => new { x.CategoriaAId, x.CategoriaBId });
+
+            e.HasOne(x => x.CategoriaA).WithMany()
+             .HasForeignKey(x => x.CategoriaAId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.CategoriaB).WithMany()
+             .HasForeignKey(x => x.CategoriaBId).OnDelete(DeleteBehavior.Restrict);
+
+            // Categorías: 1 Procesadores, 2 Tarjetas Gráficas, 3 Motherboards, 4 Memorias RAM, 5 Almacenamiento M.2, 6 Fuentes de Poder.
+            // Una fuente de poder solo combina con placa de video y motherboard; la RAM nunca con la fuente.
+            e.HasData(
+                new CategoriaCompatible { CategoriaAId = 1, CategoriaBId = 2 },
+                new CategoriaCompatible { CategoriaAId = 1, CategoriaBId = 3 },
+                new CategoriaCompatible { CategoriaAId = 1, CategoriaBId = 4 },
+                new CategoriaCompatible { CategoriaAId = 1, CategoriaBId = 5 },
+                new CategoriaCompatible { CategoriaAId = 2, CategoriaBId = 3 },
+                new CategoriaCompatible { CategoriaAId = 2, CategoriaBId = 6 },
+                new CategoriaCompatible { CategoriaAId = 3, CategoriaBId = 4 },
+                new CategoriaCompatible { CategoriaAId = 3, CategoriaBId = 5 },
+                new CategoriaCompatible { CategoriaAId = 3, CategoriaBId = 6 },
+                new CategoriaCompatible { CategoriaAId = 4, CategoriaBId = 5 });
+        });
+
+        // ---------- Auditoria (bitácora) ----------
+        modelBuilder.Entity<RegistroAuditoria>(e =>
+        {
+            e.ToTable("Auditoria");
+            e.Property(x => x.Accion).HasMaxLength(60).IsRequired();
+            e.Property(x => x.Entidad).HasMaxLength(40).IsRequired();
+            e.Property(x => x.EntidadId).HasMaxLength(50);
+            e.Property(x => x.Detalle).HasMaxLength(1000);
+            e.Property(x => x.Ip).HasMaxLength(45);
+            e.HasIndex(x => x.Fecha);
+            e.HasIndex(x => new { x.Entidad, x.EntidadId });
+
+            e.HasOne(x => x.Usuario).WithMany()
              .HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.Restrict);
         });
     }

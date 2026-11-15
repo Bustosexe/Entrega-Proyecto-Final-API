@@ -5,30 +5,30 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <Color x:Key="Primario">#4F46E5</Color>
-    <Color x:Key="PrimarioOscuro">#4338CA</Color>
-    <Color x:Key="PrimarioSuave">#EEF2FF</Color>
-    <Color x:Key="Acento">#7C3AED</Color>
-    <Color x:Key="Oscuro">#1E1B4B</Color>
-    <Color x:Key="Fondo">#F6F7FB</Color>
-    <Color x:Key="FondoSuave">#EEF0F6</Color>
+    <Color x:Key="Primario">#D63224</Color>
+    <Color x:Key="PrimarioOscuro">#B3271B</Color>
+    <Color x:Key="PrimarioSuave">#FDECEA</Color>
+    <Color x:Key="Acento">#F2603F</Color>
+    <Color x:Key="Oscuro">#1C1C1F</Color>
+    <Color x:Key="Fondo">#F0F0F1</Color>
+    <Color x:Key="FondoSuave">#E6E6E8</Color>
     <Color x:Key="Superficie">#FFFFFF</Color>
-    <Color x:Key="Texto">#0F172A</Color>
-    <Color x:Key="TextoSecundario">#64748B</Color>
-    <Color x:Key="TextoTenue">#94A3B8</Color>
-    <Color x:Key="Borde">#E5E8F0</Color>
+    <Color x:Key="Texto">#18181B</Color>
+    <Color x:Key="TextoSecundario">#6B6B73</Color>
+    <Color x:Key="TextoTenue">#9A9AA2</Color>
+    <Color x:Key="Borde">#E0E0E3</Color>
     <Color x:Key="Exito">#16A34A</Color>
     <Color x:Key="Alerta">#D97706</Color>
-    <Color x:Key="Peligro">#DC2626</Color>
-    <Color x:Key="PeligroSuave">#FEE2E2</Color>
+    <Color x:Key="Peligro">#B91C1C</Color>
+    <Color x:Key="PeligroSuave">#FBE3E1</Color>
 
-    <SolidColorBrush x:Key="PrimarioBrush" Color="#4F46E5" />
+    <SolidColorBrush x:Key="PrimarioBrush" Color="#D63224" />
     <SolidColorBrush x:Key="SuperficieBrush" Color="#FFFFFF" />
 
     <!-- Degradé de marca para tarjetas destacadas -->
     <LinearGradientBrush x:Key="HeroBrush" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Color="#4F46E5" Offset="0.0" />
-        <GradientStop Color="#7C3AED" Offset="1.0" />
+        <GradientStop Color="#1C1C1F" Offset="0.0" />
+        <GradientStop Color="#5C201A" Offset="1.0" />
     </LinearGradientBrush>
 
 </ResourceDictionary>

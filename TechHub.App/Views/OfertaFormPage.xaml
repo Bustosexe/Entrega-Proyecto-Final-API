@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TechHub.App.ViewModels"
+             x:Class="TechHub.App.Views.OfertaFormPage"
+             x:DataType="vm:OfertaFormViewModel"
+             Title="{Binding Titulo}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="18" Spacing="6">
+
+            <Label Text="Producto *" Style="{StaticResource Rotulo}" />
+            <Button Text="{Binding ProductoTexto}" Command="{Binding ElegirProductoCommand}" Style="{StaticResource BotonSecundario}" />
+
+            <Label Text="Título (opcional)" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <Entry Text="{Binding TituloOferta}" Placeholder="Ej: Hot Sale" MaxLength="80" />
+            </Border>
+
+            <Label Text="Descuento (%) *" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <Entry Text="{Binding PorcentajeTexto}" Keyboard="Numeric" MaxLength="2" Placeholder="1 a 90" />
+            </Border>
+            <Label Text="{Binding Vista}" FontAttributes="Bold" TextColor="{StaticResource Primario}" />
+
+            <Label Text="Desde *" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <DatePicker Date="{Binding Desde}" Format="dd/MM/yyyy" />
+            </Border>
+
+            <Label Text="Hasta *" Style="{StaticResource Rotulo}" />
+            <Border Style="{StaticResource CampoBorde}">
+                <DatePicker Date="{Binding Hasta}" Format="dd/MM/yyyy" />
+            </Border>
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                <Label Text="Oferta activa" VerticalOptions="Center" />
+                <Switch Grid.Column="1" IsToggled="{Binding Activa}" />
+            </Grid>
+            <Label Text="El descuento se aplica en todo el día de inicio y fin (hora de Argentina)." Style="{StaticResource Mini}" />
+
+            <Button Text="Guardar" Command="{Binding GuardarCommand}" Margin="0,16,0,0" />
+            <Button Text="Eliminar oferta" Command="{Binding EliminarCommand}" Style="{StaticResource BotonPeligro}"
+                    IsVisible="{Binding PuedeBorrar}" />
+            <ActivityIndicator IsRunning="{Binding EstaOcupado}" IsVisible="{Binding EstaOcupado}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

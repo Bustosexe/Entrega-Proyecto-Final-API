@@ -51,7 +51,11 @@ public record ProductoDto(
     string? ImagenUrl,
     bool Activo,
     int CategoriaId,
-    string Categoria);
+    string Categoria,
+    // Descuento de la oferta vigente (null si no hay oferta).
+    int? DescuentoPct,
+    // Precio que se cobra hoy: el de lista menos la oferta vigente.
+    decimal PrecioFinal);
 
 public class ProductoRequest
 {
@@ -82,6 +86,8 @@ public class ProductoQuery : PaginacionQuery
     public int? CategoriaId { get; set; }
     public int? MarcaId { get; set; }
     public bool? SoloStockBajo { get; set; }
+    /// <summary>Si es true, solo productos con una oferta vigente.</summary>
+    public bool? SoloOfertas { get; set; }
     /// <summary>Si es true, incluye productos dados de baja (solo personal).</summary>
     public bool IncluirInactivos { get; set; }
     /// <summary>nombre | precio | precio_desc | stock | vendidos | nuevos</summary>

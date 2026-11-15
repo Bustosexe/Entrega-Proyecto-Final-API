@@ -29,8 +29,8 @@
 
   <ItemGroup>
     <!-- Ícono y pantalla de inicio -->
-    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#0F172A" />
-    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#0F172A" BaseSize="128,128" />
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#18181B" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#18181B" BaseSize="128,128" />
 
     <!-- Imágenes (los .svg se convierten a .png en la compilación) -->
     <MauiImage Include="Resources\Images\*" />

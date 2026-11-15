@@ -53,8 +53,12 @@ public class PedidosController(
             estado = EstadosPedido.Pendiente;
         }
 
+        if (req.Items.Count == 0 && req.Combos.Count == 0)
+            return BadRequest(new ProblemDetails { Status = 400, Title = "Carrito vacío", Detail = "El carrito está vacío." });
+
         var codigo = await movimientos.RegistrarPedidoAsync(
-            clienteId, usuarioId, req.Items.Select(i => (i.ProductoId, i.Cantidad)), estado, req.Observaciones?.Trim(), ct);
+            clienteId, usuarioId, req.Items.Select(i => (i.ProductoId, i.Cantidad)), estado, req.Observaciones?.Trim(),
+            req.Combos.Select(c => (c.ComboId, c.Cantidad)), ct);
 
         var pedido = (await db.ObtenerPedidoAsync(codigo, ct))!;
         if (!esAdmin)

@@ -9,11 +9,11 @@ namespace TechHub.App.Graficos;
 /// </summary>
 public class GraficoBarras(IReadOnlyList<(string Etiqueta, double Valor)> datos) : IDrawable
 {
-    private static readonly Color ColorBarra = Color.FromArgb("#C7D2FE");
-    private static readonly Color ColorBarraHoy = Color.FromArgb("#4F46E5");
-    private static readonly Color ColorVacio = Color.FromArgb("#EEF2FF");
-    private static readonly Color ColorTexto = Color.FromArgb("#64748B");
-    private static readonly Color ColorGuia = Color.FromArgb("#F3F4F6");
+    private static readonly Color ColorBarra = Color.FromArgb("#F6B8B0");
+    private static readonly Color ColorBarraHoy = Color.FromArgb("#D63224");
+    private static readonly Color ColorVacio = Color.FromArgb("#FDECEA");
+    private static readonly Color ColorTexto = Color.FromArgb("#6B6B73");
+    private static readonly Color ColorGuia = Color.FromArgb("#F1F1F2");
 
     public void Draw(ICanvas canvas, RectF r)
     {
@@ -54,7 +54,7 @@ public class GraficoBarras(IReadOnlyList<(string Etiqueta, double Valor)> datos)
 
             if (valor > 0)
             {
-                canvas.FontColor = Color.FromArgb("#0F172A");
+                canvas.FontColor = Color.FromArgb("#18181B");
                 canvas.DrawString(Compacto(valor), r.Left + i * anchoColumna, y - 16, anchoColumna, 14,
                     Microsoft.Maui.Graphics.HorizontalAlignment.Center, Microsoft.Maui.Graphics.VerticalAlignment.Bottom);
             }

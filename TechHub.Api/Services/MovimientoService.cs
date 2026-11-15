@@ -17,9 +17,14 @@ public interface IMovimientoService
     Task<Compra> RegistrarCompraAsync(int proveedorId, int usuarioId, string? numeroComprobante, string? observaciones,
         IEnumerable<(int ProductoId, int Cantidad, decimal CostoUnitario)> items, CancellationToken ct = default);
 
-    /// <summary>Crea un pedido (cabecera + renglones) reservando el stock. Devuelve el código del pedido.</summary>
+    /// <summary>
+    /// Crea un pedido (cabecera + renglones) reservando el stock. Devuelve el código del pedido.
+    /// Cada producto se cobra con su oferta vigente; los combos aportan sus productos con el descuento del combo
+    /// (se aplica el mejor precio entre el del combo y la oferta del producto).
+    /// </summary>
     Task<string> RegistrarPedidoAsync(int clienteId, int usuarioId, IEnumerable<(int ProductoId, int Cantidad)> items,
-        string estadoInicial, string? observaciones, CancellationToken ct = default);
+        string estadoInicial, string? observaciones, IEnumerable<(int ComboId, int Cantidad)>? combos = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Cambia el estado del pedido y lo registra en el historial (quién, cuándo y por qué).
@@ -93,36 +98,107 @@ public class MovimientoService(AppDbContext db) : IMovimientoService
     }
 
     public async Task<string> RegistrarPedidoAsync(int clienteId, int usuarioId, IEnumerable<(int ProductoId, int Cantidad)> items,
-        string estadoInicial, string? observaciones, CancellationToken ct = default)
+        string estadoInicial, string? observaciones, IEnumerable<(int ComboId, int Cantidad)>? combos = null,
+        CancellationToken ct = default)
     {
-        // Si el mismo producto viene dos veces en el carrito, se suman las cantidades.
-        var lineas = items
+        // Si el mismo producto (o combo) viene dos veces en el carrito, se suman las cantidades.
+        var sueltos = items
             .GroupBy(i => i.ProductoId)
             .Select(g => (ProductoId: g.Key, Cantidad: g.Sum(x => x.Cantidad)))
             .ToList();
+        var combosPedidos = (combos ?? Array.Empty<(int ComboId, int Cantidad)>())
+            .GroupBy(c => c.ComboId)
+            .Select(g => (ComboId: g.Key, Cantidad: g.Sum(x => x.Cantidad)))
+            .ToList();
 
-        if (lineas.Count == 0)
+        if (sueltos.Count == 0 && combosPedidos.Count == 0)
             throw new ReglaNegocioException("El pedido no tiene productos.");
 
         if (!await db.Clientes.AnyAsync(c => c.Id == clienteId && c.Activo, ct))
             throw new ReglaNegocioException("El cliente no existe o está dado de baja.", StatusCodes.Status404NotFound);
 
-        var ids = lineas.Select(l => l.ProductoId).ToList();
+        // Combos pedidos: deben existir y estar activos.
+        var comboIds = combosPedidos.Select(c => c.ComboId).ToList();
+        var combosDb = await db.Combos.AsNoTracking()
+            .Include(c => c.Items)
+            .Where(c => comboIds.Contains(c.Id))
+            .ToListAsync(ct);
+        foreach (var c in combosPedidos)
+        {
+            var combo = combosDb.FirstOrDefault(x => x.Id == c.ComboId)
+                ?? throw new ReglaNegocioException($"El combo {c.ComboId} no existe.", StatusCodes.Status404NotFound);
+            if (!combo.Activo)
+                throw new ReglaNegocioException($"El combo \"{combo.Nombre}\" ya no está a la venta.");
+        }
+
+        var ids = sueltos.Select(s => s.ProductoId)
+            .Concat(combosDb.SelectMany(c => c.Items.Select(i => i.ProductoId)))
+            .Distinct()
+            .ToList();
+
         var productos = await db.Productos.AsNoTracking()
             .Where(p => ids.Contains(p.Id))
             .Select(p => new { p.Id, p.Nombre, p.Precio, p.Stock, p.Activo })
             .ToDictionaryAsync(p => p.Id, ct);
 
-        foreach (var l in lineas)
+        foreach (var id in ids)
         {
-            if (!productos.TryGetValue(l.ProductoId, out var p))
-                throw new ReglaNegocioException($"El producto {l.ProductoId} no existe.", StatusCodes.Status404NotFound);
+            if (!productos.TryGetValue(id, out var p))
+                throw new ReglaNegocioException($"El producto {id} no existe.", StatusCodes.Status404NotFound);
             if (!p.Activo)
                 throw new ReglaNegocioException($"\"{p.Nombre}\" ya no está a la venta.");
         }
 
-        var estadoId = EstadosPedido.Id(estadoInicial);
+        // Mayor descuento de las ofertas vigentes en este momento, por producto.
         var ahora = DateTime.UtcNow;
+        var ofertas = await db.Ofertas.AsNoTracking()
+            .Where(o => ids.Contains(o.ProductoId) && o.Activa && o.Desde <= ahora && o.Hasta >= ahora)
+            .GroupBy(o => o.ProductoId)
+            .Select(g => new { ProductoId = g.Key, Pct = g.Max(o => o.Porcentaje) })
+            .ToDictionaryAsync(o => o.ProductoId, o => o.Pct, ct);
+
+        decimal PrecioConOferta(int productoId) =>
+            ofertas.TryGetValue(productoId, out var pct)
+                ? Precios.ConDescuento(productos[productoId].Precio, pct)
+                : productos[productoId].Precio;
+
+        // Un producto es un solo renglón del pedido, aunque venga suelto y dentro de un combo:
+        // se suman las cantidades y el precio unitario es el promedio ponderado.
+        var renglones = new Dictionary<int, (int Cantidad, decimal Total)>();
+        void Sumar(int productoId, int cantidad, decimal unitario)
+        {
+            renglones.TryGetValue(productoId, out var r);
+            renglones[productoId] = (r.Cantidad + cantidad, r.Total + unitario * cantidad);
+        }
+
+        foreach (var s in sueltos)
+            Sumar(s.ProductoId, s.Cantidad, PrecioConOferta(s.ProductoId));
+
+        foreach (var c in combosPedidos)
+        {
+            var combo = combosDb.First(x => x.Id == c.ComboId);
+            foreach (var it in combo.Items)
+            {
+                var precioCombo = Precios.ConDescuento(productos[it.ProductoId].Precio, combo.Porcentaje);
+                Sumar(it.ProductoId, it.Cantidad * c.Cantidad, Math.Min(precioCombo, PrecioConOferta(it.ProductoId)));
+            }
+        }
+
+        var lineas = renglones
+            .Select(kv => (
+                ProductoId: kv.Key,
+                Cantidad: kv.Value.Cantidad,
+                Precio: Math.Round(kv.Value.Total / kv.Value.Cantidad, 2, MidpointRounding.AwayFromZero)))
+            .ToList();
+
+        // Los combos quedan anotados en las observaciones del pedido.
+        var textoCombos = combosPedidos.Count == 0
+            ? null
+            : "Combos: " + string.Join(", ", combosPedidos.Select(c => $"{combosDb.First(x => x.Id == c.ComboId).Nombre} x{c.Cantidad}"));
+        var notas = string.Join(" · ", new[] { observaciones, textoCombos }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        if (notas.Length > 500) notas = notas[..499] + "…";
+
+        var estadoId = EstadosPedido.Id(estadoInicial);
         var pedido = new Pedido
         {
             Codigo = GenerarCodigo(),
@@ -130,7 +206,7 @@ public class MovimientoService(AppDbContext db) : IMovimientoService
             ClienteId = clienteId,
             UsuarioId = usuarioId,
             EstadoId = estadoId,
-            Observaciones = observaciones
+            Observaciones = notas.Length == 0 ? null : notas
         };
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
@@ -155,7 +231,7 @@ public class MovimientoService(AppDbContext db) : IMovimientoService
             {
                 ProductoId = l.ProductoId,
                 Cantidad = cantidad,
-                PrecioUnitario = p.Precio   // precio congelado al momento de la compra
+                PrecioUnitario = l.Precio   // precio congelado al momento de la compra (con oferta o combo)
             });
         }
 

@@ -24,4 +24,6 @@ public class Producto
 
     public ICollection<DetalleCompra> DetallesCompra { get; set; } = new List<DetalleCompra>();
     public ICollection<DetallePedido> DetallesPedido { get; set; } = new List<DetallePedido>();
+    public ICollection<Oferta> Ofertas { get; set; } = new List<Oferta>();
+    public ICollection<ComboItem> EnCombos { get; set; } = new List<ComboItem>();
 }

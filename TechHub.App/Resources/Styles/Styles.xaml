@@ -21,7 +21,7 @@
         <Setter Property="TextColor" Value="White" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="FontSize" Value="15" />
-        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="CornerRadius" Value="26" />
         <Setter Property="HeightRequest" Value="52" />
         <Setter Property="Padding" Value="20,0" />
         <Setter Property="BorderWidth" Value="0" />
@@ -31,8 +31,8 @@
                     <VisualState x:Name="Normal" />
                     <VisualState x:Name="Disabled">
                         <VisualState.Setters>
-                            <Setter Property="BackgroundColor" Value="#E2E8F0" />
-                            <Setter Property="TextColor" Value="#94A3B8" />
+                            <Setter Property="BackgroundColor" Value="#E4E4E7" />
+                            <Setter Property="TextColor" Value="#9A9AA2" />
                         </VisualState.Setters>
                     </VisualState>
                     <VisualState x:Name="Pressed">
@@ -97,9 +97,9 @@
     </Style>
 
     <Style TargetType="Shell" ApplyToDerivedTypes="True">
-        <Setter Property="Shell.BackgroundColor" Value="White" />
-        <Setter Property="Shell.ForegroundColor" Value="{StaticResource Texto}" />
-        <Setter Property="Shell.TitleColor" Value="{StaticResource Texto}" />
+        <Setter Property="Shell.BackgroundColor" Value="{StaticResource Oscuro}" />
+        <Setter Property="Shell.ForegroundColor" Value="White" />
+        <Setter Property="Shell.TitleColor" Value="White" />
         <Setter Property="Shell.NavBarHasShadow" Value="False" />
         <Setter Property="Shell.TabBarBackgroundColor" Value="White" />
         <Setter Property="Shell.TabBarForegroundColor" Value="{StaticResource Primario}" />
@@ -113,7 +113,7 @@
         <Setter Property="BackgroundColor" Value="White" />
         <Setter Property="Stroke" Value="{StaticResource Borde}" />
         <Setter Property="StrokeThickness" Value="1" />
-        <Setter Property="StrokeShape" Value="RoundRectangle 20" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 24" />
         <Setter Property="Padding" Value="16" />
     </Style>
 
@@ -122,7 +122,7 @@
         <Setter Property="BackgroundColor" Value="White" />
         <Setter Property="Stroke" Value="{StaticResource Borde}" />
         <Setter Property="StrokeThickness" Value="1" />
-        <Setter Property="StrokeShape" Value="RoundRectangle 16" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 20" />
         <Setter Property="Padding" Value="10" />
     </Style>
 
@@ -130,8 +130,8 @@
         <Setter Property="BackgroundColor" Value="White" />
         <Setter Property="Stroke" Value="{StaticResource Borde}" />
         <Setter Property="StrokeThickness" Value="1" />
-        <Setter Property="StrokeShape" Value="RoundRectangle 14" />
-        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 26" />
+        <Setter Property="Padding" Value="16,0" />
     </Style>
 
     <Style x:Key="Etiqueta" TargetType="Border">

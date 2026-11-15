@@ -21,7 +21,14 @@
                 <VerticalStackLayout Padding="20,18" Spacing="8">
                     <Label Text="{Binding Producto.MarcaCategoria}" Style="{StaticResource Secundario}" />
                     <Label Text="{Binding Producto.Nombre}" Style="{StaticResource Titulo}" />
-                    <Label Text="{Binding Producto.PrecioTexto}" FontSize="28" FontAttributes="Bold" />
+                    <HorizontalStackLayout Spacing="10">
+                        <Label Text="{Binding Producto.PrecioTexto}" FontSize="28" FontAttributes="Bold" />
+                        <Label Text="{Binding Producto.PrecioListaTexto}" IsVisible="{Binding Producto.TieneOferta}" FontSize="16"
+                               TextDecorations="Strikethrough" TextColor="{StaticResource TextoSecundario}" VerticalOptions="Center" />
+                        <Border IsVisible="{Binding Producto.TieneOferta}" Style="{StaticResource Etiqueta}" BackgroundColor="{StaticResource Primario}">
+                            <Label Text="{Binding Producto.DescuentoTexto}" Style="{StaticResource TextoEtiqueta}" />
+                        </Border>
+                    </HorizontalStackLayout>
 
                     <Border Style="{StaticResource Etiqueta}" BackgroundColor="{Binding Producto.StockColor}">
                         <Label Text="{Binding Producto.StockTexto}" Style="{StaticResource TextoEtiqueta}" FontSize="12" />

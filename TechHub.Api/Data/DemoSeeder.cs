@@ -178,6 +178,58 @@ public static class DemoSeeder
         logger.LogInformation("Datos de demostración cargados: {Cantidad} productos.", creados.Count);
     }
 
+    /// <summary>
+    /// Ofertas y combos de demostración (solo si todavía no hay ninguno). Los combos respetan la
+    /// compatibilidad entre categorías (motherboard + RAM, placa de video + fuente...).
+    /// </summary>
+    public static async Task CargarPromocionesAsync(AppDbContext db, ILogger logger)
+    {
+        if (await db.Ofertas.AnyAsync() || await db.Combos.AnyAsync()) return;
+
+        var productos = await db.Productos.ToDictionaryAsync(p => p.Nombre, StringComparer.OrdinalIgnoreCase);
+        var hoy = Services.Precios.FechaArgentina(DateTime.UtcNow);
+
+        void AgregarOferta(string producto, string titulo, int porcentaje, int diasDesdeHoy, int diasDuracion)
+        {
+            if (!productos.TryGetValue(producto, out var p)) return;
+            db.Ofertas.Add(new Oferta
+            {
+                Producto = p,
+                Titulo = titulo,
+                Porcentaje = porcentaje,
+                Desde = Services.Precios.InicioDiaUtc(hoy.AddDays(diasDesdeHoy)),
+                Hasta = Services.Precios.FinDiaUtc(hoy.AddDays(diasDesdeHoy + diasDuracion)),
+                Activa = true
+            });
+        }
+
+        void AgregarCombo(string nombre, string descripcion, int porcentaje, params (string Producto, int Cantidad)[] items)
+        {
+            if (items.Any(i => !productos.ContainsKey(i.Producto))) return;
+            db.Combos.Add(new Combo
+            {
+                Nombre = nombre,
+                Descripcion = descripcion,
+                Porcentaje = porcentaje,
+                Items = items.Select(i => new ComboItem { Producto = productos[i.Producto], Cantidad = i.Cantidad }).ToList()
+            });
+        }
+
+        AgregarOferta("GeForce RTX 4060 8GB Ventus 2X Black OC", "Hot Sale", 15, -1, 14);
+        AgregarOferta("SSD NV2 1TB NVMe M.2", "Oferta de la semana", 20, 0, 7);
+        AgregarOferta("AMD Ryzen 5 7600", "Precio especial", 10, -2, 10);
+
+        AgregarCombo("Combo Ryzen 5 + B650M + DDR5 16GB", "Procesador, motherboard y memorias listos para armar tu PC AM5.", 8,
+            ("AMD Ryzen 5 7600", 1), ("B650M Gaming Plus WiFi", 1), ("Fury Beast DDR5 16GB (2x8) 6000MHz", 1));
+        AgregarCombo("Combo RTX 4070 SUPER + Fuente 750W", "Placa de video con la fuente certificada que necesita.", 10,
+            ("GeForce RTX 4070 SUPER 12GB Gaming X Slim", 1), ("Fuente RM750e 750W 80+ Gold Modular", 1));
+        AgregarCombo("Combo Motherboard + 2 RAM + SSD", "Placa B760 con dos kits de memoria DDR5 y un SSD NVMe.", 7,
+            ("TUF Gaming B760-Plus WiFi", 1), ("Vengeance RGB DDR5 32GB (2x16) 6000MHz Blanca", 2), ("SSD NV2 1TB NVMe M.2", 1));
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("Ofertas y combos de demostración cargados.");
+    }
+
     private static async Task<Proveedor> ObtenerProveedorAsync(AppDbContext db, string cuit, string razonSocial,
         string email, string telefono, string direccion)
     {

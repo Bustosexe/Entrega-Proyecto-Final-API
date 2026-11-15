@@ -5,10 +5,12 @@ using TechHub.App.Models;
 
 namespace TechHub.App.Services;
 
-/// <summary>Producto dentro del carrito.</summary>
+/// <summary>Producto (o combo) dentro del carrito. Si ComboId tiene valor, el renglón es un combo.</summary>
 public partial class CarritoItem : ObservableObject
 {
     public int ProductoId { get; set; }
+    /// <summary>Id del combo (null si es un producto suelto). Los combos se cobran con el descuento del combo.</summary>
+    public int? ComboId { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public string? ImagenUrl { get; set; }
     public decimal Precio { get; set; }
@@ -21,7 +23,7 @@ public partial class CarritoItem : ObservableObject
 
     public decimal Subtotal => Precio * Cantidad;
     public string SubtotalTexto => Formato.Moneda(Subtotal);
-    public string PrecioTexto => $"{Formato.Moneda(Precio)} c/u";
+    public string PrecioTexto => ComboId is null ? $"{Formato.Moneda(Precio)} c/u" : $"Combo · {Formato.Moneda(Precio)} c/u";
     public string ImagenCompleta => Config.ApiConfig.UrlCompleta(ImagenUrl);
 }
 
@@ -30,6 +32,7 @@ public class CarritoService
 {
     private const string Clave = "th_carrito";
     public const int MaximoPorProducto = 100;
+    public const int MaximoPorCombo = 10;
 
     public ObservableCollection<CarritoItem> Items { get; } = [];
 
@@ -54,7 +57,7 @@ public class CarritoService
     /// <summary>Agrega unidades. Devuelve false si se supera el stock disponible.</summary>
     public bool Agregar(ProductoDto p, int cantidad)
     {
-        var item = Items.FirstOrDefault(i => i.ProductoId == p.Id);
+        var item = Items.FirstOrDefault(i => i.ComboId is null && i.ProductoId == p.Id);
         var nueva = (item?.Cantidad ?? 0) + cantidad;
         if (nueva > p.Stock || nueva > MaximoPorProducto) return false;
 
@@ -65,15 +68,44 @@ public class CarritoService
                 ProductoId = p.Id,
                 Nombre = p.Nombre,
                 ImagenUrl = p.ImagenUrl,
-                Precio = p.Precio,
+                Precio = p.PrecioVigente,
                 Stock = p.Stock,
                 Cantidad = cantidad
             });
         }
         else
         {
-            item.Precio = p.Precio;
+            item.Precio = p.PrecioVigente;
             item.Stock = p.Stock;
+            item.Cantidad = nueva;
+        }
+        Guardar();
+        return true;
+    }
+
+    /// <summary>Agrega un combo completo. Devuelve false si no alcanza el stock de alguno de sus productos.</summary>
+    public bool AgregarCombo(ComboDto combo, int cantidad)
+    {
+        var item = Items.FirstOrDefault(i => i.ComboId == combo.Id);
+        var nueva = (item?.Cantidad ?? 0) + cantidad;
+        if (nueva > combo.StockDisponible || nueva > MaximoPorCombo) return false;
+
+        if (item is null)
+        {
+            Items.Add(new CarritoItem
+            {
+                ComboId = combo.Id,
+                Nombre = combo.Nombre,
+                ImagenUrl = combo.ImagenUrl,
+                Precio = combo.PrecioCombo,
+                Stock = combo.StockDisponible,
+                Cantidad = cantidad
+            });
+        }
+        else
+        {
+            item.Precio = combo.PrecioCombo;
+            item.Stock = combo.StockDisponible;
             item.Cantidad = nueva;
         }
         Guardar();
@@ -84,7 +116,7 @@ public class CarritoService
     {
         var nueva = item.Cantidad + delta;
         if (nueva <= 0) { Quitar(item); return; }
-        if (nueva > item.Stock || nueva > MaximoPorProducto) return;
+        if (nueva > item.Stock || nueva > (item.ComboId is null ? MaximoPorProducto : MaximoPorCombo)) return;
         item.Cantidad = nueva;
         Guardar();
     }

@@ -9,7 +9,7 @@ namespace TechHub.App.Config;
 public static class ApiConfig
 {
     /// <summary>true = API local (emulador). false = API publicada en MonsterASP.</summary>
-    public const bool UsarServidorLocal = false;
+    public const bool UsarServidorLocal = true;
 
     public const string UrlLocal = "http://10.0.2.2:5180";
 

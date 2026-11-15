@@ -20,6 +20,9 @@ public partial class AppShell : Shell
 
         // Pantallas que se abren encima de las pestañas
         Routing.RegisterRoute("producto", typeof(ProductoDetallePage));
+        Routing.RegisterRoute("combo", typeof(ComboDetallePage));
+        Routing.RegisterRoute("comboform", typeof(ComboFormPage));
+        Routing.RegisterRoute("ofertaform", typeof(OfertaFormPage));
         Routing.RegisterRoute("login", typeof(LoginPage));
         Routing.RegisterRoute("registro", typeof(RegistroPage));
         Routing.RegisterRoute("pedido", typeof(PedidoDetallePage));

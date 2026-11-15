@@ -18,11 +18,11 @@
                     <VerticalStackLayout Spacing="14">
                         <Grid ColumnDefinitions="*,*">
                             <VerticalStackLayout>
-                                <Label Text="Pagos a revisar" TextColor="#E0E7FF" FontSize="13" />
+                                <Label Text="Pagos a revisar" TextColor="#D4D4D8" FontSize="13" />
                                 <Label Text="{Binding EnRevision}" TextColor="White" FontSize="34" FontAttributes="Bold" />
                             </VerticalStackLayout>
                             <VerticalStackLayout Grid.Column="1">
-                                <Label Text="Esperando pago" TextColor="#E0E7FF" FontSize="13" />
+                                <Label Text="Esperando pago" TextColor="#D4D4D8" FontSize="13" />
                                 <Label Text="{Binding Pendientes}" TextColor="White" FontSize="34" FontAttributes="Bold" />
                             </VerticalStackLayout>
                         </Grid>

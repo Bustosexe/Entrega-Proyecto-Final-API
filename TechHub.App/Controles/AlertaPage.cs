@@ -11,8 +11,8 @@ public enum TipoAlerta { Exito, Error, Advertencia, Pregunta, Info }
 /// </summary>
 public class AlertaPage : ContentPage
 {
-    private static readonly Color Texto = Color.FromArgb("#0F172A");
-    private static readonly Color TextoSecundario = Color.FromArgb("#64748B");
+    private static readonly Color Texto = Color.FromArgb("#18181B");
+    private static readonly Color TextoSecundario = Color.FromArgb("#6B6B73");
 
     private readonly TaskCompletionSource<string?> _resultado = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Border _tarjeta;
@@ -76,7 +76,7 @@ public class AlertaPage : ContentPage
             _entrada.Completed += async (_, _) => await CerrarAsync(_entrada.Text?.Trim() ?? string.Empty);
             contenido.Add(new Border
             {
-                BackgroundColor = Color.FromArgb("#F6F7FB"),
+                BackgroundColor = Color.FromArgb("#F0F0F1"),
                 StrokeThickness = 0,
                 StrokeShape = new RoundRectangle { CornerRadius = 14 },
                 Padding = new Thickness(12, 0),
@@ -86,7 +86,7 @@ public class AlertaPage : ContentPage
         }
 
         // Botones
-        var confirmar = CrearBoton(textoConfirmar, peligro ? Color.FromArgb("#DC2626") : Color.FromArgb("#4F46E5"), Colors.White);
+        var confirmar = CrearBoton(textoConfirmar, peligro ? Color.FromArgb("#B91C1C") : Color.FromArgb("#D63224"), Colors.White);
         confirmar.Clicked += async (_, _) => await CerrarAsync(_entrada?.Text?.Trim() ?? string.Empty);
 
         var botones = new Grid { ColumnSpacing = 10, Margin = new Thickness(0, 18, 0, 0) };
@@ -94,7 +94,7 @@ public class AlertaPage : ContentPage
         {
             botones.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
             botones.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-            var cancelar = CrearBoton(textoCancelar, Color.FromArgb("#EEF2FF"), Color.FromArgb("#4F46E5"));
+            var cancelar = CrearBoton(textoCancelar, Color.FromArgb("#FDECEA"), Color.FromArgb("#D63224"));
             cancelar.Clicked += async (_, _) => await CerrarAsync(null);
             botones.Add(cancelar, 0, 0);
             botones.Add(confirmar, 1, 0);
@@ -180,9 +180,9 @@ public class AlertaPage : ContentPage
     private static Color ColorDe(TipoAlerta tipo) => tipo switch
     {
         TipoAlerta.Exito => Color.FromArgb("#16A34A"),
-        TipoAlerta.Error => Color.FromArgb("#DC2626"),
+        TipoAlerta.Error => Color.FromArgb("#B91C1C"),
         TipoAlerta.Advertencia => Color.FromArgb("#F59E0B"),
-        TipoAlerta.Pregunta => Color.FromArgb("#6366F1"),
+        TipoAlerta.Pregunta => Color.FromArgb("#52525B"),
         _ => Color.FromArgb("#3B82F6")
     };
 

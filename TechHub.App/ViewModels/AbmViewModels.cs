@@ -14,6 +14,8 @@ public class AbmItem
     public string Titulo { get; init; } = string.Empty;
     public string Subtitulo { get; init; } = string.Empty;
     public string Detalle { get; init; } = string.Empty;
+    /// <summary>Texto completo para las listas de solo lectura (auditoría).</summary>
+    public string Completo { get; init; } = string.Empty;
     public bool Activo { get; init; } = true;
     public string Etiqueta { get; init; } = string.Empty;
     public Color EtiquetaColor { get; init; } = Paleta.Gris;
@@ -65,6 +67,12 @@ public class AbmDefinicion
     /// <summary>Campos del formulario. Recibe el registro a editar (null = alta).</summary>
     public required Func<JsonElement?, List<AbmCampo>> Campos { get; init; }
     public Func<AbmItem, bool> PuedeBorrar { get; init; } = i => i.Activo;
+    /// <summary>Lista sin alta ni edición (auditoría): al tocar un registro se muestra su detalle.</summary>
+    public bool SoloLectura { get; init; }
+    /// <summary>Ruta de un formulario propio (ofertas, combos). Null = formulario genérico.</summary>
+    public string? RutaFormulario { get; init; }
+    /// <summary>Parámetros extra de la consulta, por ejemplo "&incluirInactivos=true".</summary>
+    public string QueryExtra { get; init; } = string.Empty;
 }
 
 public static class Abms
@@ -77,6 +85,14 @@ public static class Abms
 
     private static int I(JsonElement e, string p) =>
         e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
+
+    private static decimal D(JsonElement e, string p) =>
+        e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDecimal() : 0;
+
+    /// <summary>"2026-11-15" → "15/11/2026".</summary>
+    private static string FechaCorta(string iso) =>
+        DateTime.TryParse(iso, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d)
+            ? d.ToString("dd/MM/yyyy") : iso;
 
     private static string Unir(params string[] partes) => string.Join(" · ", partes.Where(x => !string.IsNullOrWhiteSpace(x)));
 
@@ -236,6 +252,85 @@ public static class Abms
             Campos = d => d is null ? CamposUsuarioNuevo() : CamposUsuarioEdicion(d)
         },
 
+        "ofertas" => new AbmDefinicion
+        {
+            Titulo = "Ofertas",
+            Singular = "oferta",
+            Endpoint = "api/ofertas",
+            RutaFormulario = "ofertaform",
+            Mapear = e =>
+            {
+                var estado = S(e, "estado");
+                return new AbmItem
+                {
+                    Id = I(e, "id"),
+                    Titulo = S(e, "producto"),
+                    Subtitulo = $"-{I(e, "porcentaje")}% · {FechaCorta(S(e, "desde"))} al {FechaCorta(S(e, "hasta"))}",
+                    Detalle = $"{Formato.Moneda(D(e, "precioLista"))} → {Formato.Moneda(D(e, "precioOferta"))}",
+                    Activo = estado is "Vigente" or "Programada",
+                    Etiqueta = estado.ToUpperInvariant(),
+                    EtiquetaColor = estado switch { "Vigente" => Paleta.Exito, "Programada" => Paleta.Info, _ => Paleta.Gris },
+                    Datos = e
+                };
+            },
+            Campos = _ => []
+        },
+
+        "combos" => new AbmDefinicion
+        {
+            Titulo = "Combos",
+            Singular = "combo",
+            Endpoint = "api/combos",
+            QueryExtra = "&incluirInactivos=true",
+            RutaFormulario = "comboform",
+            TextoBorrar = "Dar de baja",
+            Mapear = e =>
+            {
+                var activo = B(e, "activo");
+                var items = e.TryGetProperty("items", out var arr) && arr.ValueKind == JsonValueKind.Array ? arr.GetArrayLength() : 0;
+                return new AbmItem
+                {
+                    Id = I(e, "id"),
+                    Titulo = S(e, "nombre"),
+                    Subtitulo = $"{items} productos · -{I(e, "porcentaje")}%",
+                    Detalle = $"{Formato.Moneda(D(e, "precioLista"))} → {Formato.Moneda(D(e, "precioCombo"))}",
+                    Activo = activo,
+                    Etiqueta = !activo ? "INACTIVO" : B(e, "disponible") ? "" : "SIN STOCK",
+                    EtiquetaColor = !activo ? Paleta.Gris : Paleta.Alerta,
+                    Datos = e
+                };
+            },
+            Campos = _ => []
+        },
+
+        "auditoria" => new AbmDefinicion
+        {
+            Titulo = "Auditoría",
+            Singular = "registro",
+            Endpoint = "api/auditoria",
+            SoloLectura = true,
+            Mapear = e =>
+            {
+                var usuario = S(e, "usuario");
+                var fecha = e.TryGetProperty("fecha", out var f) && f.TryGetDateTime(out var dt) ? Formato.Fecha(dt) : "";
+                var detalle = S(e, "detalle");
+                var entidadId = S(e, "entidadId");
+                var cabecera = Unir(S(e, "entidad"), entidadId.Length > 0 ? "#" + entidadId : "");
+                return new AbmItem
+                {
+                    Id = (int)Math.Min(int.MaxValue, e.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number ? id.GetInt64() : 0),
+                    Titulo = S(e, "accion"),
+                    Subtitulo = Unir(cabecera, usuario.Length > 0 ? usuario : "Sin sesión"),
+                    Detalle = detalle.Length > 90 ? detalle[..90] + "…" : detalle,
+                    Completo = $"{fecha}\n{Unir(usuario.Length > 0 ? usuario : "Sin sesión", S(e, "rol"))}\n{cabecera}\nIP: {S(e, "ip")}\n\n{detalle}",
+                    Etiqueta = fecha,
+                    EtiquetaColor = Paleta.Gris,
+                    Datos = e
+                };
+            },
+            Campos = _ => []
+        },
+
         _ => throw new ArgumentException($"Tipo de ABM desconocido: {tipo}")
     };
 }
@@ -255,6 +350,7 @@ public partial class AbmListaViewModel(ApiClient api) : BaseViewModel, IQueryAtt
     [ObservableProperty] private string resultadoTexto = string.Empty;
     [ObservableProperty] private string mensajeVacio = "Cargando...";
     [ObservableProperty] private string textoNuevo = "Nuevo";
+    [ObservableProperty] private bool puedeCrear = true;
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
@@ -264,6 +360,7 @@ public partial class AbmListaViewModel(ApiClient api) : BaseViewModel, IQueryAtt
             _def = Abms.Obtener(tipo);
             Titulo = _def.Titulo;
             TextoNuevo = $"+ Nuevo {_def.Singular}";
+            PuedeCrear = !_def.SoloLectura;
         }
     }
 
@@ -282,15 +379,18 @@ public partial class AbmListaViewModel(ApiClient api) : BaseViewModel, IQueryAtt
 
     [RelayCommand]
     private Task NuevoAsync() =>
-        IrAsync("abmform", new Dictionary<string, object> { ["Tipo"] = _tipo });
+        IrAsync(_def?.RutaFormulario ?? "abmform", new Dictionary<string, object> { ["Tipo"] = _tipo });
 
-    public Task AbrirAsync(AbmItem item) =>
-        IrAsync("abmform", new Dictionary<string, object> { ["Tipo"] = _tipo, ["Item"] = item });
+    public Task AbrirAsync(AbmItem item)
+    {
+        if (_def?.SoloLectura == true) return Dialogos.Alerta(item.Titulo, item.Completo);
+        return IrAsync(_def?.RutaFormulario ?? "abmform", new Dictionary<string, object> { ["Tipo"] = _tipo, ["Item"] = item });
+    }
 
     private Task CargarAsync(int pagina) => EjecutarAsync(async () =>
     {
         if (_def is null) return;
-        var url = $"{_def.Endpoint}?pagina={pagina}&tamanio=20";
+        var url = $"{_def.Endpoint}?pagina={pagina}&tamanio=20{_def.QueryExtra}";
         if (!string.IsNullOrWhiteSpace(Buscar)) url += $"&buscar={Uri.EscapeDataString(Buscar.Trim())}";
 
         var r = await api.GetAsync<PagedResult<JsonElement>>(url);

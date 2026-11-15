@@ -30,6 +30,9 @@ public partial class MasPage : ContentPage
     private async void OnMarcas(object? sender, EventArgs e) => await AbrirAbm("marcas");
     private async void OnProveedores(object? sender, EventArgs e) => await AbrirAbm("proveedores");
     private async void OnClientes(object? sender, EventArgs e) => await AbrirAbm("clientes");
+    private async void OnOfertas(object? sender, EventArgs e) => await AbrirAbm("ofertas");
+    private async void OnCombos(object? sender, EventArgs e) => await AbrirAbm("combos");
+    private async void OnAuditoria(object? sender, EventArgs e) => await AbrirAbm("auditoria");
     private async void OnUsuarios(object? sender, EventArgs e) => await AbrirAbm("usuarios");
 
     private async void OnCerrarSesion(object? sender, EventArgs e)

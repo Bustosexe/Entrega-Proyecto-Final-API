@@ -42,6 +42,7 @@ public static class DbSeeder
             try
             {
                 await DemoSeeder.CargarAsync(db, hasher, logger);
+                await DemoSeeder.CargarPromocionesAsync(db, logger);
             }
             catch (Exception ex)
             {

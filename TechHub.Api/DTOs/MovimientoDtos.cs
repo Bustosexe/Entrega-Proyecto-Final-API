@@ -133,10 +133,24 @@ public class PedidoItemRequest
     public int Cantidad { get; set; }
 }
 
+public class PedidoComboRequest
+{
+    [Range(1, int.MaxValue, ErrorMessage = "Combo inválido.")]
+    public int ComboId { get; set; }
+
+    [Range(1, 10, ErrorMessage = "La cantidad de combos debe estar entre 1 y 10.")]
+    public int Cantidad { get; set; } = 1;
+}
+
 public class PedidoCrearRequest
 {
-    [Required, MinLength(1, ErrorMessage = "El carrito está vacío."), MaxLength(30)]
+    /// <summary>Productos sueltos. Puede ir vacío si el pedido tiene combos (al menos uno de los dos es obligatorio).</summary>
+    [MaxLength(30)]
     public List<PedidoItemRequest> Items { get; set; } = [];
+
+    /// <summary>Combos del carrito: se cobran con el descuento del combo.</summary>
+    [MaxLength(10)]
+    public List<PedidoComboRequest> Combos { get; set; } = [];
 
     [StringLength(500)]
     public string? Observaciones { get; set; }

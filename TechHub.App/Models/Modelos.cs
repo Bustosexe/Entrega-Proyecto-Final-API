@@ -8,17 +8,17 @@ namespace TechHub.App.Models;
 /// <summary>Colores usados desde código (badges de estado y stock).</summary>
 public static class Paleta
 {
-    public static readonly Color Primario = Color.FromArgb("#4F46E5");
-    public static readonly Color Oscuro = Color.FromArgb("#1E1B4B");
+    public static readonly Color Primario = Color.FromArgb("#D63224");
+    public static readonly Color Oscuro = Color.FromArgb("#1C1C1F");
     public static readonly Color Blanco = Colors.White;
     public static readonly Color Exito = Color.FromArgb("#16A34A");
     public static readonly Color Alerta = Color.FromArgb("#D97706");
-    public static readonly Color Peligro = Color.FromArgb("#DC2626");
+    public static readonly Color Peligro = Color.FromArgb("#B91C1C");
     public static readonly Color Info = Color.FromArgb("#0284C7");
-    public static readonly Color Gris = Color.FromArgb("#64748B");
-    public static readonly Color FondoChip = Color.FromArgb("#E0E7FF");
-    public static readonly Color Violeta = Color.FromArgb("#C026D3");
-    public static readonly Color Linea = Color.FromArgb("#E5E7EB");
+    public static readonly Color Gris = Color.FromArgb("#6B6B73");
+    public static readonly Color FondoChip = Color.FromArgb("#E4E4E7");
+    public static readonly Color Violeta = Color.FromArgb("#7C3AED");
+    public static readonly Color Linea = Color.FromArgb("#E4E4E7");
 }
 
 public static class Formato
@@ -116,9 +116,17 @@ public class ProductoDto
     public bool Activo { get; set; }
     public int CategoriaId { get; set; }
     public string Categoria { get; set; } = string.Empty;
+    /// <summary>Descuento de la oferta vigente (null si no hay).</summary>
+    public int? DescuentoPct { get; set; }
+    /// <summary>Precio que se cobra hoy (precio de lista menos la oferta vigente).</summary>
+    public decimal PrecioFinal { get; set; }
 
     [JsonIgnore] public string ImagenCompleta => ApiConfig.UrlCompleta(ImagenUrl);
-    [JsonIgnore] public string PrecioTexto => Formato.Moneda(Precio);
+    [JsonIgnore] public bool TieneOferta => DescuentoPct is > 0;
+    [JsonIgnore] public decimal PrecioVigente => TieneOferta ? PrecioFinal : Precio;
+    [JsonIgnore] public string PrecioTexto => Formato.Moneda(PrecioVigente);
+    [JsonIgnore] public string PrecioListaTexto => Formato.Moneda(Precio);
+    [JsonIgnore] public string DescuentoTexto => $"-{DescuentoPct}%";
     [JsonIgnore] public bool HayStock => Stock > 0;
     [JsonIgnore] public string MarcaCategoria => $"{Marca} · {Categoria}";
 
@@ -335,4 +343,75 @@ public static class EstadosPedido
         ("Entregado", "Entregado"),
         ("Cancelado", "Cancelado")
     ];
+}
+
+// ---------------- Ofertas, combos y auditoría ----------------
+
+public class OfertaDto
+{
+    public int Id { get; set; }
+    public int ProductoId { get; set; }
+    public string Producto { get; set; } = string.Empty;
+    public string? ImagenUrl { get; set; }
+    public decimal PrecioLista { get; set; }
+    public string? Titulo { get; set; }
+    public int Porcentaje { get; set; }
+    public decimal PrecioOferta { get; set; }
+    public DateOnly Desde { get; set; }
+    public DateOnly Hasta { get; set; }
+    public bool Activa { get; set; }
+    /// <summary>Vigente, Programada, Vencida o Pausada.</summary>
+    public string Estado { get; set; } = string.Empty;
+}
+
+public class ComboItemDto
+{
+    public int ProductoId { get; set; }
+    public string Producto { get; set; } = string.Empty;
+    public string? ImagenUrl { get; set; }
+    public string Categoria { get; set; } = string.Empty;
+    public int Cantidad { get; set; }
+    public decimal PrecioLista { get; set; }
+    public decimal PrecioCombo { get; set; }
+    public int Stock { get; set; }
+
+    [JsonIgnore] public string ImagenCompleta => ApiConfig.UrlCompleta(ImagenUrl);
+    [JsonIgnore] public string Titulo => Cantidad > 1 ? $"{Cantidad} × {Producto}" : Producto;
+    [JsonIgnore] public string PrecioTexto => Formato.Moneda(PrecioCombo * Cantidad);
+    [JsonIgnore] public string PrecioListaTexto => Formato.Moneda(PrecioLista * Cantidad);
+}
+
+public class ComboDto
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string? Descripcion { get; set; }
+    public int Porcentaje { get; set; }
+    public bool Activo { get; set; }
+    public string? ImagenUrl { get; set; }
+    public decimal PrecioLista { get; set; }
+    public decimal PrecioCombo { get; set; }
+    public decimal Ahorro { get; set; }
+    public int StockDisponible { get; set; }
+    public bool Disponible { get; set; }
+    public List<ComboItemDto> Items { get; set; } = [];
+
+    [JsonIgnore] public string ImagenCompleta => ApiConfig.UrlCompleta(ImagenUrl);
+    [JsonIgnore] public string PrecioTexto => Formato.Moneda(PrecioCombo);
+    [JsonIgnore] public string PrecioListaTexto => Formato.Moneda(PrecioLista);
+    [JsonIgnore] public string AhorroTexto => $"Ahorrás {Formato.Moneda(Ahorro)}";
+    [JsonIgnore] public string DescuentoTexto => $"-{Porcentaje}%";
+    [JsonIgnore] public string ResumenItems => string.Join(" + ", Items.Select(i => i.Titulo));
+    [JsonIgnore] public string CantidadProductosTexto => Items.Sum(i => i.Cantidad) == 1 ? "1 producto" : $"{Items.Sum(i => i.Cantidad)} productos";
+    [JsonIgnore] public string StockTexto => !Disponible ? "Sin stock" : StockDisponible <= 3 ? $"¡Quedan {StockDisponible}!" : $"{StockDisponible} disponibles";
+    [JsonIgnore] public Color StockColor => !Disponible ? Paleta.Peligro : StockDisponible <= 3 ? Paleta.Alerta : Paleta.Exito;
+}
+
+/// <summary>Par de categorías que pueden ir juntas en un combo.</summary>
+public class CompatibilidadDto
+{
+    public int CategoriaAId { get; set; }
+    public string CategoriaA { get; set; } = string.Empty;
+    public int CategoriaBId { get; set; }
+    public string CategoriaB { get; set; } = string.Empty;
 }

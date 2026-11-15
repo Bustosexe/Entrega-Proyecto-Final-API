@@ -23,48 +23,48 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
     [AllowAnonymous]
     public async Task<ActionResult<PagedResult<ProductoDto>>> Listar([FromQuery] ProductoQuery q, CancellationToken ct)
     {
-        var query = db.Productos.AsNoTracking().AsQueryable();
+        // Cada producto trae su descuento vigente: el precio final sirve para filtrar y ordenar.
+        var query = db.Productos.AsNoTracking().ConOferta(DateTime.UtcNow);
 
         var esAdmin = User.IsInRole(Roles.Admin);
         if (!(q.IncluirInactivos && esAdmin))
-            query = query.Where(p => p.Activo);
+            query = query.Where(x => x.P.Activo);
 
         if (!string.IsNullOrWhiteSpace(q.Buscar))
         {
             var b = q.Buscar.Trim();
-            query = query.Where(p => p.Nombre.Contains(b) || p.Marca.Nombre.Contains(b));
+            query = query.Where(x => x.P.Nombre.Contains(b) || x.P.Marca.Nombre.Contains(b));
         }
 
         if (q.CategoriaId is int categoriaId)
-            query = query.Where(p => p.CategoriaId == categoriaId);
+            query = query.Where(x => x.P.CategoriaId == categoriaId);
 
         if (q.MarcaId is int marcaId)
-            query = query.Where(p => p.MarcaId == marcaId);
+            query = query.Where(x => x.P.MarcaId == marcaId);
 
         if (q.SoloStockBajo == true)
-            query = query.Where(p => p.Stock <= p.StockMinimo);
+            query = query.Where(x => x.P.Stock <= x.P.StockMinimo);
 
-        if (q.PrecioMin is decimal min) query = query.Where(p => p.Precio >= min);
-        if (q.PrecioMax is decimal max) query = query.Where(p => p.Precio <= max);
+        if (q.SoloOfertas == true)
+            query = query.Where(x => x.Pct != null);
 
-        query = q.Orden?.ToLowerInvariant() switch
+        if (q.PrecioMin is decimal min) query = query.Where(x => x.PrecioFinal >= min);
+        if (q.PrecioMax is decimal max) query = query.Where(x => x.PrecioFinal <= max);
+
+        var ordenados = q.Orden?.ToLowerInvariant() switch
         {
-            "precio" => query.OrderBy(p => p.Precio).ThenBy(p => p.Id),
-            "precio_desc" => query.OrderByDescending(p => p.Precio).ThenBy(p => p.Id),
-            "stock" => query.OrderBy(p => p.Stock).ThenBy(p => p.Id),
-            "nuevos" => query.OrderByDescending(p => p.FechaCreacion).ThenByDescending(p => p.Id),
+            "precio" => query.OrderBy(x => x.PrecioFinal).ThenBy(x => x.P.Id),
+            "precio_desc" => query.OrderByDescending(x => x.PrecioFinal).ThenBy(x => x.P.Id),
+            "stock" => query.OrderBy(x => x.P.Stock).ThenBy(x => x.P.Id),
+            "nuevos" => query.OrderByDescending(x => x.P.FechaCreacion).ThenByDescending(x => x.P.Id),
             // Más vendidos: unidades vendidas en pedidos no cancelados (subconsulta en SQL).
             "vendidos" => query
-                .OrderByDescending(p => p.DetallesPedido.Where(d => d.Pedido.EstadoId != EstadosPedido.CanceladoId).Sum(d => (int?)d.Cantidad) ?? 0)
-                .ThenBy(p => p.Nombre),
-            _ => query.OrderBy(p => p.Nombre).ThenBy(p => p.Id)
+                .OrderByDescending(x => x.P.DetallesPedido.Where(d => d.Pedido.EstadoId != EstadosPedido.CanceladoId).Sum(d => (int?)d.Cantidad) ?? 0)
+                .ThenBy(x => x.P.Nombre),
+            _ => query.OrderBy(x => x.P.Nombre).ThenBy(x => x.P.Id)
         };
 
-        return await query
-            .Select(p => new ProductoDto(
-                p.Id, p.Nombre, p.MarcaId, p.Marca.Nombre, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
-                p.Stock <= p.StockMinimo, p.ImagenUrl, p.Activo, p.CategoriaId, p.Categoria.Nombre))
-            .ToPagedResultAsync(q.Pagina, q.Tamanio, ct);
+        return await ordenados.ADto().ToPagedResultAsync(q.Pagina, q.Tamanio, ct);
     }
 
     [HttpGet("{id:int}")]
@@ -88,14 +88,13 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
 
         cantidad = Math.Clamp(cantidad, 1, 12);
         var lista = await db.Productos.AsNoTracking()
-            .Where(p => p.Activo && p.CategoriaId == categoriaId && p.Id != id)
-            .OrderByDescending(p => p.Stock > 0)
-            .ThenByDescending(p => p.DetallesPedido.Where(d => d.Pedido.EstadoId != EstadosPedido.CanceladoId).Sum(d => (int?)d.Cantidad) ?? 0)
-            .ThenBy(p => p.Nombre)
+            .ConOferta(DateTime.UtcNow)
+            .Where(x => x.P.Activo && x.P.CategoriaId == categoriaId && x.P.Id != id)
+            .OrderByDescending(x => x.P.Stock > 0)
+            .ThenByDescending(x => x.P.DetallesPedido.Where(d => d.Pedido.EstadoId != EstadosPedido.CanceladoId).Sum(d => (int?)d.Cantidad) ?? 0)
+            .ThenBy(x => x.P.Nombre)
             .Take(cantidad)
-            .Select(p => new ProductoDto(
-                p.Id, p.Nombre, p.MarcaId, p.Marca.Nombre, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
-                p.Stock <= p.StockMinimo, p.ImagenUrl, p.Activo, p.CategoriaId, p.Categoria.Nombre))
+            .ADto()
             .ToListAsync(ct);
 
         return Ok(lista);
@@ -206,8 +205,7 @@ public class ProductosController(AppDbContext db, IImagenService imagenes) : Con
     private Task<ProductoDto?> ProyectarAsync(int id, CancellationToken ct) =>
         db.Productos.AsNoTracking()
             .Where(p => p.Id == id)
-            .Select(p => new ProductoDto(
-                p.Id, p.Nombre, p.MarcaId, p.Marca.Nombre, p.Descripcion, p.Precio, p.Stock, p.StockMinimo,
-                p.Stock <= p.StockMinimo, p.ImagenUrl, p.Activo, p.CategoriaId, p.Categoria.Nombre))
+            .ConOferta(DateTime.UtcNow)
+            .ADto()
             .FirstOrDefaultAsync(ct);
 }
