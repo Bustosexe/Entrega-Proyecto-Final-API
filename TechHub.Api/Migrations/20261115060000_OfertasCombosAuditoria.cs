@@ -146,16 +146,13 @@ namespace TechHub.Api.Migrations
 
             // Reglas de compatibilidad (1 Procesadores, 2 Tarjetas Gráficas, 3 Motherboards, 4 Memorias RAM,
             // 5 Almacenamiento M.2, 6 Fuentes de Poder). La RAM nunca se combina con la fuente.
-            migrationBuilder.InsertData(
-                table: "CategoriasCompatibles",
-                columns: new[] { "CategoriaAId", "CategoriaBId" },
-                values: new object[,]
-                {
-                    { 1, 2 }, { 1, 3 }, { 1, 4 }, { 1, 5 },
-                    { 2, 3 }, { 2, 6 },
-                    { 3, 4 }, { 3, 5 }, { 3, 6 },
-                    { 4, 5 }
-                });
+            // Solo inserta los pares cuyas dos categorías existen en la base (si alguien borró una, no falla la migración).
+            migrationBuilder.Sql(@"
+INSERT INTO [CategoriasCompatibles] ([CategoriaAId], [CategoriaBId])
+SELECT v.A, v.B
+FROM (VALUES (1,2),(1,3),(1,4),(1,5),(2,3),(2,6),(3,4),(3,5),(3,6),(4,5)) AS v(A, B)
+WHERE EXISTS (SELECT 1 FROM [Categorias] WHERE [Id] = v.A)
+  AND EXISTS (SELECT 1 FROM [Categorias] WHERE [Id] = v.B);");
 
             migrationBuilder.CreateIndex(name: "IX_Auditoria_Entidad_EntidadId", table: "Auditoria", columns: new[] { "Entidad", "EntidadId" });
             migrationBuilder.CreateIndex(name: "IX_Auditoria_Fecha", table: "Auditoria", column: "Fecha");
