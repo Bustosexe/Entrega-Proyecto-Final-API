@@ -1,4 +1,4 @@
-namespace TechHub.App.ViewModels;
+﻿namespace TechHub.App.ViewModels;
 
 // =====================================================================
 // Pantallas del administrador: ofertas y combos de productos
@@ -266,14 +266,6 @@ public partial class ComboFormViewModel(ApiClient api) : BaseViewModel, IQueryAt
     {
         if (Lineas.Any(l => l.Producto.Id == nuevo.Id))
             return $"\"{nuevo.Nombre}\" ya está en el combo: subí la cantidad en lugar de repetirlo.";
-        if (_compatibles is null || _compatibles.Count == 0) return null;
-
-        foreach (var otra in Lineas.Select(l => l.Producto.Categoria).Distinct())
-        {
-            if (otra == nuevo.Categoria) continue;
-            if (!_compatibles.Contains((otra, nuevo.Categoria)))
-                return $"No se puede combinar \"{nuevo.Categoria}\" con \"{otra}\": no son compatibles entre sí.";
-        }
         return null;
     }
 
@@ -317,9 +309,9 @@ public partial class ComboFormViewModel(ApiClient api) : BaseViewModel, IQueryAt
             await Dialogos.Advertencia("Descuento inválido", "El descuento del combo debe estar entre 1 y 50 %.");
             return;
         }
-        if (Lineas.Count < 2 || Lineas.Select(l => l.Producto.Categoria).Distinct().Count() < 2)
+        if (Lineas.Count < 2)
         {
-            await Dialogos.Advertencia("Combo incompleto", "Un combo necesita productos de al menos dos categorías distintas (por ejemplo, motherboard y memorias RAM).");
+            await Dialogos.Advertencia("Combo incompleto", "Un combo necesita al menos dos productos.");
             return;
         }
 

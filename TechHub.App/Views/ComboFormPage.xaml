@@ -25,7 +25,7 @@
             </Border>
 
             <Label Text="Productos del combo *" Style="{StaticResource Rotulo}" />
-            <Label Text="Solo se pueden juntar productos compatibles (una motherboard con RAM sí; una RAM con una fuente, no)."
+            <Label Text="Podés combinar cualquier producto: una PC completa o solo algunos componentes."
                    Style="{StaticResource Mini}" />
 
             <VerticalStackLayout BindableLayout.ItemsSource="{Binding Lineas}" Spacing="8" Margin="0,4,0,0">

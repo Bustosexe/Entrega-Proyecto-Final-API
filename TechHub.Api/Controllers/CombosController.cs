@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TechHub.Api.Common;
@@ -10,9 +10,8 @@ using TechHub.Api.Services;
 namespace TechHub.Api.Controllers;
 
 /// <summary>
-/// Combos: paquetes de productos compatibles entre sí con un descuento por llevarlos juntos
-/// (por ejemplo una motherboard con sus memorias RAM). Las categorías que pueden combinarse están en la tabla
-/// CategoriasCompatibles: una memoria RAM nunca se combina con una fuente de poder.
+/// Combos: paquetes de productos con un descuento por llevarlos juntos. El administrador decide qué incluir
+/// (una PC completa, algunos componentes, etc.): no hay restricciones de compatibilidad.
 /// El catálogo es público; solo los administradores crean y modifican combos.
 /// </summary>
 [ApiController]
@@ -120,8 +119,7 @@ public class CombosController(AppDbContext db) : ControllerBase
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// Reglas del combo: nombre único, productos existentes y activos sin repetir, al menos dos categorías distintas
-    /// y todas las categorías compatibles entre sí.
+    /// Reglas del combo: nombre único, productos existentes y activos sin repetir y al menos dos productos.
     /// </summary>
     private async Task ValidarAsync(ComboRequest req, int? excluirId, CancellationToken ct)
     {
@@ -144,25 +142,6 @@ public class CombosController(AppDbContext db) : ControllerBase
         var inactivo = productos.FirstOrDefault(p => !p.Activo);
         if (inactivo is not null)
             throw new ReglaNegocioException($"\"{inactivo.Nombre}\" está dado de baja y no puede formar parte de un combo.");
-
-        var categorias = productos.Select(p => (p.CategoriaId, p.Categoria)).Distinct().OrderBy(c => c.CategoriaId).ToList();
-        if (categorias.Count < 2)
-            throw new ReglaNegocioException("Un combo necesita productos de al menos dos categorías distintas (por ejemplo, motherboard y memorias RAM).");
-
-        var compatibles = (await db.CategoriasCompatibles.AsNoTracking()
-                .Select(c => new { c.CategoriaAId, c.CategoriaBId })
-                .ToListAsync(ct))
-            .Select(c => (c.CategoriaAId, c.CategoriaBId))
-            .ToHashSet();
-
-        for (var a = 0; a < categorias.Count; a++)
-            for (var b = a + 1; b < categorias.Count; b++)
-            {
-                // Las categorías vienen ordenadas por id, igual que los pares guardados (A < B).
-                if (!compatibles.Contains((categorias[a].CategoriaId, categorias[b].CategoriaId)))
-                    throw new ReglaNegocioException(
-                        $"No se puede combinar \"{categorias[a].Categoria}\" con \"{categorias[b].Categoria}\": no son compatibles entre sí.");
-            }
     }
 
     private async Task<ComboDto?> DtoAsync(int id, CancellationToken ct)
