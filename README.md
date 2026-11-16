@@ -14,7 +14,7 @@ TechHub.App  (app Android, .NET MAUI)  ──HTTP + JWT──►  TechHub.Api  (
 
 **API publicada:** <http://apiintegrador.runasp.net/swagger> (estado del servicio: `/api/estado`).
 
-**Documentación:** [Diagrama Entidad-Relación](docs/DER_TechHub.png) · [Casos de uso (diagrama y especificación)](docs/CasosDeUso.md)
+**Documentación:** [Descripción del proyecto](docs/Descripcion_Proyecto_TechHub.docx) · [Modelo de datos y DER (18 tablas)](docs/DER.md) · [Casos de uso (diagrama y especificación)](docs/CasosDeUso.md)
 
 ## Perfiles de la app
 
@@ -22,7 +22,7 @@ TechHub.App  (app Android, .NET MAUI)  ──HTTP + JWT──►  TechHub.Api  (
 |---|---|---|
 | **Visitante** | No | Ver el catálogo con fotos, buscar, filtrar por categoría, marca y precio, y ordenar. Ver el detalle de cada producto y armar el carrito. |
 | **Comprador** | Sí (se registra desde la app) | Lo mismo que el visitante, más confirmar compras, ver *Mis pedidos*, cancelar un pedido pendiente y editar su perfil. |
-| **Administrador** | Sí | Panel con indicadores, gestión de pedidos (confirmar, entregar, cancelar) con historial, productos con foto, compras a proveedores por factura con varios productos (suman stock), categorías, marcas, proveedores, clientes y usuarios. |
+| **Administrador** | Sí | Panel con indicadores, gestión de pedidos (confirmar, entregar, cancelar) con historial, productos con foto, compras a proveedores por factura con varios productos (suman stock), categorías, marcas, proveedores, clientes y usuarios, **ofertas**, **combos de productos** y **auditoría** de las operaciones. |
 
 ### Funciones destacadas de la app
 
@@ -36,7 +36,10 @@ TechHub.App  (app Android, .NET MAUI)  ──HTTP + JWT──►  TechHub.Api  (
 - **Pago por transferencia:** el carrito muestra el alias, y el pedido trae los datos para transferir con botón **copiar**. El comprador **sube el comprobante** (foto o PDF) desde la app y el admin lo revisa: **aprueba** o **rechaza** el pago, indicando el motivo.
 - **Reportes en PDF:** comprobante de pedido, **inventario valorizado** y **ventas por período**. Se pueden ver, compartir (WhatsApp, Drive…) o **enviar por email** desde Gmail.
 - **Emails automáticos:** al crear el pedido, con los datos de transferencia, y al confirmar el pago, con el comprobante en PDF adjunto.
-- **Diseño Índigo:** fondo claro, color principal índigo, botones redondeados, tarjetas con borde fino y alertas al estilo SweetAlert.
+- **Ofertas:** el admin define un descuento (1 a 90 %) sobre un producto con fecha de inicio y fin. El catálogo muestra la etiqueta de descuento, el precio final y el de lista tachado, y el chip **% Ofertas** filtra solo los productos en oferta. El precio se calcula al consultar y queda congelado en el pedido.
+- **Combos de productos:** el admin arma paquetes con cualquier producto (una PC completa o solo algunos componentes), con cantidades y un descuento (1 a 50 %). El comprador los ve en la parte superior del catálogo, mira su detalle y los agrega al carrito; al confirmar, el combo se descuenta del stock producto por producto.
+- **Auditoría (solo admin):** una bitácora automática registra altas, bajas, cambios de estado, inicios de sesión y envíos de reportes, con usuario, fecha e IP (nunca guarda contraseñas). Se consulta desde *Más → Auditoría* o en `GET /api/auditoria`.
+- **Diseño Carbón y rojo:** barra superior oscura, fondo gris claro, tarjetas blancas redondeadas, botones tipo píldora en rojo anaranjado y alertas al estilo SweetAlert.
 
 ### Ciclo de un pedido (pago por transferencia)
 
@@ -81,6 +84,7 @@ Al iniciar, la API aplica las migraciones y crea el administrador inicial **admi
 Con `"Seed:DatosDemo": true` (activado por defecto), la API carga sola al arrancar:
 - 2 proveedores.
 - 17 productos con foto y sus marcas (procesadores, placas de video, motherboards, RAM, SSD y fuentes), con stock cargado mediante 2 compras (facturas) a proveedores. Uno queda sin stock y varios con stock bajo, para mostrar las alertas.
+- 3 ofertas y 3 combos de ejemplo (se cargan solo si todavía no hay ofertas ni combos).
 - Un comprador de prueba, **comprador@techhub.local / Comprador123!**, con 3 pedidos (entregado, confirmado y pendiente) y su historial de estados.
 
 La carga es idempotente: solo agrega los productos que todavía no existen (por nombre o por imagen). Las fotos de producto están en `wwwroot/demo` (PNG de 600×600 con fondo blanco) y se usan solo con fines académicos. Si se reemplazan, hay que subir `VersionFotosDemo` en `TechHub.App/Config/ApiConfig.cs` para que la app no muestre las anteriores desde la caché. Los precios son orientativos.
@@ -92,6 +96,7 @@ La carga es idempotente: solo agrega los productos que todavía no existen (por 
 | `InitialCreate` | Primer esquema (7 tablas). |
 | `PagosYComprobantes` | Comprobante de pago y motivo de rechazo. |
 | `Normalizacion` | Pasa a **13 tablas en 3FN** (Marcas, Roles, Compras + DetallesCompra, Pedidos + DetallesPedido, EstadosPedido, HistorialPedidos). Mueve los datos existentes a las tablas nuevas **sin perder nada** y elimina Ingresos y Salidas. |
+| `OfertasCombosAuditoria` | Agrega 5 tablas (**18 en total**): Ofertas, Combos, ComboItems, CategoriasCompatibles y Auditoria. No toca los datos existentes. |
 
 La API aplica las migraciones pendientes sola al iniciar (también en MonsterASP).
 
@@ -132,12 +137,13 @@ Para tener las dos en marcha a la vez: *clic derecho en la solución → Configu
 ```
 TechHub.Api/
 ├── Controllers/   Auth, Productos, Categorias, Marcas, Proveedores, Clientes, Compras, Pedidos, Usuarios,
-│                  Referencias (roles y estados), Pagos, Reportes, Dashboard
-├── Models/        Entidades (13 tablas) + valores fijos de Roles y EstadosPedido
+│                  Referencias (roles y estados), Pagos, Reportes, Dashboard, Ofertas, Combos, Auditoria
+├── Models/        Entidades (18 tablas) + valores fijos de Roles y EstadosPedido
 ├── DTOs/          Contratos de entrada/salida con validaciones
 ├── Data/          AppDbContext (Fluent API, índices, CHECK, relaciones) y DbSeeder
 ├── Services/      TokenService (JWT), MovimientoService (stock transaccional + historial), PedidoConsultas,
-│                  ImagenService, ComprobanteService, ReportesPdfService, EmailService
+│                  ImagenService, ComprobanteService, ReportesPdfService, EmailService,
+│                  Precios y ProductoConsultas (ofertas), AuditoriaService y AuditoriaFilter
 ├── Common/        Paginación, manejo global de errores (ProblemDetails)
 └── wwwroot/uploads  Fotos de productos
 
@@ -146,13 +152,13 @@ TechHub.App/
 ├── Models/        DTOs del lado cliente + formato de moneda/fecha
 ├── Services/      ApiClient (HTTP + Bearer), SesionService (SecureStorage), CarritoService
 ├── ViewModels/    MVVM: Tienda, Admin y ABM genérico
-├── Views/         19 pantallas XAML
+├── Views/         21 pantallas XAML
 └── AppShell       Dos barras de pestañas: tienda (visitante/comprador) y admin
 ```
 
-### Modelo de datos (13 tablas, 3ª forma normal)
+### Modelo de datos (18 tablas, 3ª forma normal)
 
-Diagrama: [docs/DER_TechHub.png](docs/DER_TechHub.png).
+Diagrama y explicación de la normalización: [docs/DER.md](docs/DER.md) · imagen: [docs/DER_TechHub.png](docs/DER_TechHub.png).
 
 | Tabla | Descripción | Relaciones |
 |---|---|---|
@@ -169,13 +175,19 @@ Diagrama: [docs/DER_TechHub.png](docs/DER_TechHub.png).
 | Pedidos | Cabecera: código, cliente, estado, comprobante | N → 1 Cliente, Usuario, Estado · 1 → N Detalles e Historial |
 | DetallesPedido | Renglón: producto, cantidad y precio congelado (resta stock) | N → 1 Pedido, Producto |
 | HistorialPedidos | Cada cambio de estado: fecha, usuario y comentario | N → 1 Pedido, Estado · N → 0..1 Usuario |
+| Ofertas | Descuento temporal (%) de un producto, con fecha de inicio y fin | N → 1 Producto |
+| Combos | Paquete de productos con un descuento (nombre único) | 1 → N ComboItems |
+| ComboItems | Producto y cantidad de un combo | N → 1 Combo, Producto |
+| CategoriasCompatibles | Reglas opcionales de compatibilidad entre categorías (hoy no se exigen al armar combos) | N → 1 Categoría (A y B) |
+| Auditoria | Bitácora: acción, entidad, id, detalle, IP, fecha y usuario | N → 0..1 Usuario |
 
 Decisiones de diseño:
 - **3FN:** los datos del pedido (cliente, estado, comprobante) viven en la cabecera y no se repiten en cada renglón; marca, rol y estado son tablas de referencia en lugar de texto repetido. Los totales y subtotales no se guardan: se calculan como `Cantidad × Precio`.
 - **Precio congelado:** `DetallesPedido.PrecioUnitario` guarda el precio del momento de la compra, así un cambio de precio no altera el historial.
 - **Trazabilidad:** el stock no se edita a mano. Sube con DetallesCompra y baja con DetallesPedido. Cada cambio de estado queda en HistorialPedidos (quién aprobó o rechazó un pago, cuándo y por qué).
 - **Stock nunca negativo:** cada línea del pedido ejecuta `UPDATE ... SET Stock = Stock - @n WHERE Id = @id AND Stock >= @n` dentro de una transacción. Si un producto no alcanza, se revierte todo el pedido y la API responde `409 Conflict`. Además, la base tiene `CHECK (Stock >= 0)`.
-- **Bajas lógicas:** productos, clientes, proveedores y usuarios se desactivan, no se borran (`ON DELETE RESTRICT`).
+- **Bajas lógicas:** productos, clientes, proveedores, usuarios y combos se desactivan, no se borran (`ON DELETE RESTRICT`).
+- **Ofertas sin duplicar precios:** el precio final se calcula al consultar (precio de lista y el mayor descuento vigente); no se guarda en el producto, y el pedido congela el precio pagado.
 
 ## 6. Seguridad
 
@@ -198,6 +210,9 @@ Decisiones de diseño:
 | Productos (ABM e imagen), categorías, marcas, proveedores, clientes, usuarios, GET `/api/roles` | — | — | ✅ |
 | GET/POST `/api/compras` (factura con `items[]`: `productoId`, `cantidad`, `costoUnitario`) | — | — | ✅ |
 | Dashboard: `/resumen`, `/ventas-diarias?dias=7`, `/top-productos?cantidad=5`, `/ventas-por-marca` | — | — | ✅ |
+| GET `/api/combos`, `/api/combos/{id}`, `/api/combos/compatibilidad` y `GET /api/productos?soloOfertas=true` | ✅ | ✅ | ✅ |
+| `/api/ofertas` (listar, crear, modificar, eliminar), POST/PUT/DELETE `/api/combos` | — | — | ✅ |
+| GET `/api/auditoria`, `/api/auditoria/entidades` | — | — | ✅ |
 | GET `/api/pagos/transferencia` (alias, CBU, titular) | ✅ | ✅ | ✅ |
 | POST `/api/pedidos/{codigo}/comprobante` (multipart, campo `archivo`) | — | ✅ (su pedido) | — |
 | GET `/api/pedidos/{codigo}/comprobante` | — | ✅ (su pedido) | ✅ |

@@ -44,6 +44,10 @@ Una app móvil (.NET MAUI, Android) consume una API REST (ASP.NET Core 10 + SQL 
 | CU24 | Gestionar usuarios | Administrador | `/api/usuarios`, `GET /api/roles` |
 | CU25 | Generar reportes PDF | Administrador | `GET /api/reportes/inventario`, `GET /api/reportes/ventas`, `POST /api/reportes/enviar` |
 | CU26 | Enviar email | Sistema → Servicio de email | (cola interna `EmailBackgroundService`) |
+| CU27 | Ver ofertas y combos | Visitante | `GET /api/productos?soloOfertas=true`, `GET /api/combos`, `GET /api/combos/{id}` |
+| CU28 | Gestionar ofertas | Administrador | `/api/ofertas` |
+| CU29 | Gestionar combos de productos | Administrador | `/api/combos` |
+| CU30 | Consultar auditoría | Administrador | `GET /api/auditoria`, `GET /api/auditoria/entidades` |
 
 Estados de un pedido (tabla **EstadosPedido**): **Pendiente** (esperando pago) → **EnRevision** (pago en revisión) → **Confirmado** (pago confirmado) → **Entregado**. Desde Pendiente, EnRevision o Confirmado puede pasar a **Cancelado**, y el stock vuelve al inventario. Cada cambio queda registrado en **HistorialPedidos** con la fecha, el usuario que lo hizo y un comentario opcional (`GET /api/estados-pedido` lista los estados).
 
@@ -91,6 +95,7 @@ Estados de un pedido (tabla **EstadosPedido**): **Pendiente** (esperando pago) �
   2. La app muestra la foto, marca, categoría, descripción, precio y stock.
   3. El usuario elige la cantidad y lo agrega al carrito.
   4. Abajo se ven productos relacionados de la misma categoría.
+  5. Si el producto tiene una oferta vigente, se muestra el precio con descuento, el precio de lista tachado y la etiqueta con el porcentaje.
 - **Restricción:** no se pueden agregar más unidades que el stock disponible.
 
 ### CU05 · Gestionar carrito
@@ -101,10 +106,10 @@ Estados de un pedido (tabla **EstadosPedido**): **Pendiente** (esperando pago) �
 - **Actor:** Comprador.
 - **Precondición:** el carrito tiene productos. Si no hay sesión iniciada, la app lleva a CU01 y después vuelve al carrito.
 - **Flujo principal:**
-  1. El comprador revisa el carrito.
+  1. El comprador revisa el carrito (puede incluir productos sueltos y combos).
   2. Se muestran los datos de transferencia (CU07).
   3. El comprador confirma.
-  4. La API registra el **Pedido** (cabecera, estado **Pendiente**) con un renglón en **DetallesPedido** por producto, y el primer paso en **HistorialPedidos**. Descuenta y reserva el stock con un `UPDATE` condicional, todo dentro de una transacción.
+  4. La API registra el **Pedido** (cabecera, estado **Pendiente**) con un renglón en **DetallesPedido** por producto (los combos se expanden en sus productos, cada uno con el precio con descuento del combo), y el primer paso en **HistorialPedidos**. Descuenta y reserva el stock con un `UPDATE` condicional, todo dentro de una transacción.
   5. Se encola el email "Pedido recibido" con los datos para transferir (CU26).
   6. La app muestra la confirmación y abre el detalle del pedido.
 - **Flujo alternativo:** si otro usuario compró antes y no alcanza el stock, la API responde 409 y no se registra nada. La restricción `CHECK (Stock >= 0)` impide stock negativo.
@@ -242,3 +247,40 @@ Estados de un pedido (tabla **EstadosPedido**): **Pendiente** (esperando pago) �
   2. Un `BackgroundService` lo envía con MailKit (STARTTLS, puerto 587) y una contraseña de aplicación de Gmail.
   3. Si el envío falla, se registra en el log y la operación del usuario no se interrumpe.
 - **Configuración:** sección `Email` de `appsettings`. Se puede desactivar con `Habilitado: false`.
+
+### CU27 · Ver ofertas y combos
+- **Actor:** Visitante (y Comprador).
+- **Flujo principal:**
+  1. En el catálogo, el chip **% Ofertas** filtra los productos con una oferta vigente. Cada tarjeta muestra la etiqueta de descuento, el precio final y el precio de lista tachado.
+  2. En la parte superior del catálogo, la sección **Combos armados** muestra los paquetes disponibles con su precio y el ahorro.
+  3. Al tocar un combo se ve su detalle: los productos que incluye, el precio de lista, el precio del combo, el ahorro y el stock disponible.
+  4. El usuario elige la cantidad (hasta 10) y agrega el combo al carrito.
+- **Reglas:** una oferta está vigente si está activa y la fecha actual (hora de Argentina) está entre su inicio y su fin. Si un producto tiene varias ofertas vigentes se aplica la de mayor descuento. El stock de un combo es el del producto que primero se agote.
+
+### CU28 · Gestionar ofertas
+- **Actor:** Administrador.
+- **Flujo principal:**
+  1. En *Más → Ofertas* el administrador ve la lista con el estado de cada una (**Vigente**, **Programada**, **Vencida** o **Pausada**).
+  2. Crea o edita una oferta eligiendo el producto (buscándolo por nombre), el porcentaje de descuento (1 a 90 %), las fechas de inicio y fin y si está activa. La pantalla muestra una vista previa del precio final.
+  3. También puede eliminarla: el producto vuelve a su precio de lista.
+- **Flujos alternativos:** si la fecha de fin es anterior a la de inicio o el porcentaje está fuera de rango, la API responde 400 y la app conserva lo escrito.
+- **Postcondición:** el precio con descuento aparece en el catálogo y se congela en el pedido al comprar (`DetallesPedido.PrecioUnitario`).
+
+### CU29 · Gestionar combos de productos
+- **Actor:** Administrador.
+- **Flujo principal:**
+  1. En *Más → Combos de productos* el administrador ve todos los combos, activos e inactivos.
+  2. Crea o edita un combo con nombre, descripción, porcentaje de descuento (1 a 50 %) y los productos que lo forman, cada uno con su cantidad (1 a 20). Puede combinar cualquier producto: una PC completa o solo algunos componentes.
+  3. La pantalla muestra una estimación del precio del combo.
+  4. Para retirar un combo de la tienda lo **da de baja** (baja lógica: los pedidos anteriores se conservan).
+- **Reglas:** nombre único, al menos dos productos distintos, sin repetir productos (se usa la cantidad) y todos activos. Si un producto del combo tiene una oferta mayor que el descuento del combo, se aplica la oferta.
+- **Flujo alternativo:** ante un error (por ejemplo, nombre repetido) la app muestra el mensaje y conserva lo escrito.
+
+### CU30 · Consultar auditoría
+- **Actor:** Administrador.
+- **Flujo principal:**
+  1. En *Más → Auditoría* el administrador ve, de más reciente a más antiguo, qué se hizo, sobre qué entidad, quién lo hizo y cuándo.
+  2. Al tocar un registro ve el detalle completo (usuario, rol, IP y datos de la operación).
+  3. La API permite filtrar por entidad, usuario y rango de fechas.
+- **Registro automático:** un filtro global de la API guarda en la tabla **Auditoria** toda operación de alta, modificación, baja o cambio de estado que termina bien, los inicios de sesión (también los fallidos) y los envíos de reportes por email. Nunca guarda contraseñas. Si el registro falla, la operación del usuario no se interrumpe.
+- **Regla:** es solo de lectura; nadie puede modificar ni borrar la bitácora desde la app.

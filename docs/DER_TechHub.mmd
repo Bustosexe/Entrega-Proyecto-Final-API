@@ -1,0 +1,164 @@
+erDiagram
+    Categorias ||--o{ Productos : clasifica
+    Marcas ||--o{ Productos : fabrica
+    Productos ||--o{ DetallesCompra : "ingresa en"
+    Productos ||--o{ DetallesPedido : "se vende en"
+    Productos ||--o{ Ofertas : "tiene"
+    Productos ||--o{ ComboItems : "forma parte de"
+    Combos ||--|{ ComboItems : contiene
+    Categorias ||--o{ CategoriasCompatibles : "regla A"
+    Categorias ||--o{ CategoriasCompatibles : "regla B"
+    Proveedores ||--o{ Compras : factura
+    Compras ||--|{ DetallesCompra : contiene
+    Clientes ||--o{ Pedidos : realiza
+    Clientes |o--o| Usuarios : "tiene cuenta"
+    Roles ||--o{ Usuarios : asigna
+    Usuarios ||--o{ Compras : registra
+    Usuarios ||--o{ Pedidos : registra
+    Usuarios |o--o{ HistorialPedidos : "cambia estado"
+    Usuarios |o--o{ Auditoria : "realiza"
+    EstadosPedido ||--o{ Pedidos : "estado actual"
+    EstadosPedido ||--o{ HistorialPedidos : "estado nuevo"
+    Pedidos ||--|{ DetallesPedido : contiene
+    Pedidos ||--o{ HistorialPedidos : historial
+
+    Categorias {
+        int Id PK
+        nvarchar100 Nombre UK
+        nvarchar300 Descripcion
+        bit Activo
+    }
+    Marcas {
+        int Id PK
+        nvarchar80 Nombre UK
+        bit Activo
+    }
+    Productos {
+        int Id PK
+        nvarchar150 Nombre
+        nvarchar1000 Descripcion
+        decimal Precio "CHECK >= 0"
+        int Stock "CHECK >= 0"
+        int StockMinimo
+        nvarchar300 ImagenUrl
+        bit Activo
+        datetime2 FechaCreacion
+        int CategoriaId FK
+        int MarcaId FK
+    }
+    Proveedores {
+        int Id PK
+        nvarchar150 RazonSocial
+        nvarchar13 Cuit UK
+        nvarchar150 Email
+        nvarchar30 Telefono
+        nvarchar200 Direccion
+        bit Activo
+    }
+    Clientes {
+        int Id PK
+        nvarchar150 Nombre
+        nvarchar13 Documento UK
+        nvarchar150 Email
+        nvarchar30 Telefono
+        nvarchar200 Direccion
+        bit Activo
+    }
+    Roles {
+        int Id PK
+        nvarchar20 Nombre UK
+        nvarchar150 Descripcion
+    }
+    Usuarios {
+        int Id PK
+        nvarchar150 NombreUsuario UK
+        nvarchar150 NombreCompleto
+        nvarchar150 Email UK
+        nvarchar500 PasswordHash
+        bit Activo
+        datetime2 FechaCreacion
+        int RolId FK
+        int ClienteId FK
+    }
+    EstadosPedido {
+        int Id PK
+        nvarchar20 Codigo UK
+        nvarchar50 Nombre
+    }
+    Compras {
+        int Id PK
+        datetime2 Fecha
+        nvarchar50 NumeroComprobante
+        nvarchar500 Observaciones
+        int ProveedorId FK
+        int UsuarioId FK
+    }
+    DetallesCompra {
+        int Id PK
+        int CompraId FK
+        int ProductoId FK
+        int Cantidad "CHECK > 0"
+        decimal CostoUnitario
+    }
+    Pedidos {
+        int Id PK
+        nvarchar20 Codigo UK
+        datetime2 Fecha
+        nvarchar500 Observaciones
+        nvarchar200 ComprobanteArchivo
+        int ClienteId FK
+        int UsuarioId FK
+        int EstadoId FK
+    }
+    DetallesPedido {
+        int Id PK
+        int PedidoId FK
+        int ProductoId FK
+        int Cantidad "CHECK > 0"
+        decimal PrecioUnitario
+    }
+    HistorialPedidos {
+        int Id PK
+        int PedidoId FK
+        int EstadoId FK
+        datetime2 Fecha
+        int UsuarioId FK
+        nvarchar300 Comentario
+    }
+    Ofertas {
+        int Id PK
+        int ProductoId FK
+        nvarchar80 Titulo
+        int Porcentaje "CHECK 1-90"
+        datetime2 Desde
+        datetime2 Hasta "CHECK >= Desde"
+        bit Activa
+    }
+    Combos {
+        int Id PK
+        nvarchar100 Nombre UK
+        nvarchar500 Descripcion
+        int Porcentaje "CHECK 1-50"
+        bit Activo
+        datetime2 FechaCreacion
+    }
+    ComboItems {
+        int Id PK
+        int ComboId FK
+        int ProductoId FK
+        int Cantidad "CHECK 1-20"
+    }
+    CategoriasCompatibles {
+        int CategoriaAId PK
+        int CategoriaBId PK
+    }
+    Auditoria {
+        bigint Id PK
+        datetime2 Fecha
+        int UsuarioId FK
+        nvarchar60 Accion
+        nvarchar40 Entidad
+        nvarchar50 EntidadId
+        nvarchar1000 Detalle
+        nvarchar45 Ip
+    }
