@@ -70,8 +70,15 @@ public partial class OfertaFormViewModel(ApiClient api) : BaseViewModel, IQueryA
         }
     }
 
+    private bool _parametrosAplicados;
+
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
+        // Shell vuelve a llamar a este método cuando se cierra una alerta o un selector; sin esta guarda
+        // se pisaba lo que el usuario ya había escrito.
+        if (_parametrosAplicados) return;
+        _parametrosAplicados = true;
+
         if (query.TryGetValue("Item", out var v) && v is AbmItem { Datos.ValueKind: JsonValueKind.Object } item)
         {
             var e = item.Datos;
@@ -206,8 +213,15 @@ public partial class ComboFormViewModel(ApiClient api) : BaseViewModel, IQueryAt
 
     private static decimal Precio(decimal lista, int pct) => Math.Round(lista * (100 - pct) / 100m, 2, MidpointRounding.AwayFromZero);
 
+    private bool _parametrosAplicados;
+
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
+        // Shell vuelve a llamar a este método cuando se cierra una alerta o un selector; sin esta guarda
+        // se pisaba lo que el usuario ya había escrito.
+        if (_parametrosAplicados) return;
+        _parametrosAplicados = true;
+
         Lineas.Clear();
         if (query.TryGetValue("Item", out var v) && v is AbmItem { Datos.ValueKind: JsonValueKind.Object } item)
         {

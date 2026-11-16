@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace TechHub.App.ViewModels;
 
@@ -228,8 +228,15 @@ public partial class ProductoFormViewModel(ApiClient api) : BaseViewModel, IQuer
 
     public bool TieneImagen => !string.IsNullOrEmpty(_producto?.ImagenUrl);
 
+    private bool _parametrosAplicados;
+
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
+        // Shell vuelve a llamar a este método cuando se cierra una alerta o un selector; sin esta guarda
+        // se pisaba lo que el usuario ya había escrito.
+        if (_parametrosAplicados) return;
+        _parametrosAplicados = true;
+
         if (query.TryGetValue("Producto", out var v) && v is ProductoDto p)
         {
             _producto = p;

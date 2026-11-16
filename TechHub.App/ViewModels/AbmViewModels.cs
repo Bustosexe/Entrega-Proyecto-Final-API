@@ -1,4 +1,4 @@
-namespace TechHub.App.ViewModels;
+﻿namespace TechHub.App.ViewModels;
 
 // =====================================================================
 // ABM genérico: Categorías, Proveedores, Clientes y Usuarios comparten
@@ -413,8 +413,15 @@ public partial class AbmFormViewModel(ApiClient api) : BaseViewModel, IQueryAttr
     [ObservableProperty] private bool puedeBorrar;
     [ObservableProperty] private string textoBorrar = string.Empty;
 
+    private bool _parametrosAplicados;
+
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
+        // Shell vuelve a llamar a este método cuando se cierra una alerta o un selector; sin esta guarda
+        // se pisaba lo que el usuario ya había escrito.
+        if (_parametrosAplicados) return;
+        _parametrosAplicados = true;
+
         if (!query.TryGetValue("Tipo", out var v) || v is not string tipo) return;
         _def = Abms.Obtener(tipo);
         _item = query.TryGetValue("Item", out var i) ? i as AbmItem : null;
